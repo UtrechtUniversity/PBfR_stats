@@ -1,0 +1,30 @@
+project:
+  title: "PBfR_stats"
+  output-dir: docs
+
+title: "Usage report Privacy Basics for Researchers"
+date: last-modified
+author: "Research Data Management Support"
+
+editor: visual
+
+format: 
+   html:
+     df-print: kable
+     toc: true
+     toc-depth: 2
+     toc-expand: 2
+     toc-location: left
+     toc-title: Contents
+     number-sections: true
+     css: assets/style.css
+     embed-resources: true
+     anchor-sections: true
+     link-external-newwindow: true
+     code-copy: true
+     code-fold: true
+     code-summary: "See R code" 
+     code-overflow: wrap
+     code-tools: true
+     highlight-style: github
+     favicon: assets/favicon.ico
