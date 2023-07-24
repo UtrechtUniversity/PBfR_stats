@@ -1,0 +1,166 @@
+## About
+
+In this report, you'll find some data on the usage of the online training 
+"Privacy Basics for Researchers". This online module was created by Research 
+Data Management Support at Utrecht University (NL) to provide a 
+researcher-friendly introduction into the General Data Protection Regulation 
+(GDPR), with a focus on how it applies to scientific research performed at 
+Utrecht University (UU).
+
+A description of and a registration link to the online module can be found on the 
+[RDM Support website](https://www.uu.nl/en/research/research-data-management/walk-in-hours-workshops/privacy-basics-online-training).
+The module is embedded within the Utrecht University Moodle platform, 
+"ULearning", but the raw module materials are also available 
+[online via Zenodo](https://doi.org/10.5281/zenodo.7930571).
+
+## Getting the data out of the ULearning platform
+
+To obtain the data for this report, the following steps should be followed:
+
+#### 1. Progress report
+
+1.  From course main page, go to Reports > Activity completion
+2.  Download the file to the spreadsheet format (UTF-8 .csv)
+3.  Save the file in the `raw` folder. Add the date of downloading in the 
+downloaded csv file "YYYYMMDD_progress.pbfr.csv"
+
+#### 2. List of enrolled participants
+
+1.  From course main page, go to Participants.
+2.  Set the following selection criteria: Match *All* of the following
+
+-   Match ANY Roles: Student, Guest, Authenticated user, Authenticated user on 
+site home AND
+-   Match None Groups: Red
+
+3.  Click "Apply filters"
+4.  Select all users
+5.  Under "With selected users...", select "Comma-separated values (.csv)"
+6.  Save the file in the `raw` folder. Add the date of downloading in the 
+downloaded csv file "YYYYMMDD_courseid_838_participants.csv"
+
+#### 3. Quiz results
+
+1.  From course main page, go to Chapter 6 \| Closing \> Final Quiz
+2.  Click "Attempts: \[##\]" (The \## indicating the number of attempts)
+3.  Under What to include in the report, select:
+
+-   Attempts from enrolled users who have attempted the quiz
+-   Attempts that are In progress, Overdue, Finished, and Never submitted
+-   Check Show at most one finished attempt per user (Highest grade)
+
+4.  Under Display options:
+
+-   Make sure Page size is larger than the amount of attempts.
+-   Marks for each question: Yes
+
+5.  Click Show report.
+6.  Select all participants using the checkbox above the first name in the list.
+7.  Download the data as Comma separated values (.csv)
+8.  Save the file in the `raw` folder as "YYYYMMDD_PBfR-Quiz.csv".
+
+The data are not shared because they contain personal data (e.g., names, email 
+addresses and information about participants' progress in the module).
+
+## Reading and cleaning the data
+
+```{r prerequisites}
+library(dplyr)
+```
+
+We first have to read and clean the data to get usable data frames. We don't 
+want to include people who were involved in the creation of the course or who 
+provided feedback on it; we only need the actual users; people who enrolled 
+after the launch of the course with the intention to actually learn something 
+new!
+
+```{r read-the-data}
+participants <- read.csv("raw/20230724_courseid_838_participants.csv")
+progress <- read.csv("raw/20230724_progress.pbfr.csv")
+quiz <- read.csv("raw/20230724_PBfR-Quiz.csv")
+```
+
+```{r select-actual-users}
+# Create a subset of progress and quiz so that they only contain the correct 
+# participants (i.e., only people who were *not* involved in the creation or 
+# reviewing of the course; these people are labelled as "Red")
+participants_relevant <- participants %>% 
+        filter(!(Groups == "Red" & !is.na(Groups)))
+progress_relevant <- subset(progress, 
+                            Email.address %in% participants_relevant$Email.address)
+quiz_relevant <- subset(quiz, 
+                        Email.address %in% participants_relevant$Email.address)
+```
+
+## Number of participants
+
+```{r n-participants}
+n_participants <- dim(participants_relevant)[1]
+n_participants_uu <- sum(grepl("@uu.nl$", participants_relevant$Email.address))
+n_participants_students <- sum(grepl("@students.uu.nl$", participants_relevant$Email.address))
+n_other <- n_participants - n_participants_uu - n_participants_students
+```
+
+There are currently `n_participants` enrolled in the course. 
+`n_participants_uu` of them are enrolled with their "@uu.nl" email address, and 
+`n_participants_students` of them with the "@students.uu.nl" email address. 
+`n_other` participants are either from an external institution or have used a 
+personal email address to enroll in the course.
+
+**TODO**: 
+
+- Create graph
+- Read in data from over time
+- Create graph of sample size over time
+
+## Participants' progress
+
+TODO:
+
+- How many participants completed each block? (Graph)
+- How does this go over time?
+
+## Quiz results
+
+TODO:
+
+-   Average grade overall
+-   Average grade per quiz question (percentage)
+
+```{r clean-up-quiz-data}
+# Only get Started.on from 2023-05-20 onwards
+# Skip last row that says "Overall average" under Last.name
+# Skip names
+```
+
+## Using tabsets
+
+::: panel-tabset
+## Block 1
+
+``` r
+fizz_buzz <- function(fbnums = 1:50) {
+  output <- dplyr::case_when(
+    fbnums %% 15 == 0 ~ "FizzBuzz",
+    fbnums %% 3 == 0 ~ "Fizz",
+    fbnums %% 5 == 0 ~ "Buzz",
+    TRUE ~ as.character(fbnums)
+  )
+  print(output)
+}
+```
+
+## Block 2
+
+``` python
+def fizz_buzz(num):
+  if num % 15 == 0:
+    print("FizzBuzz")
+  elif num % 5 == 0:
+    print("Buzz")
+  elif num % 3 == 0:
+    print("Fizz")
+  else:
+    print(num)
+```
+:::
