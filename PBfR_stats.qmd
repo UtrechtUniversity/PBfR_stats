@@ -64,8 +64,10 @@ addresses and information about participants' progress in the module).
 
 ## Reading and cleaning the data
 
-```{r prerequisites}
-library(dplyr)
+```{r load-packages}
+library(tidyverse)
+library(ggplot2)
+library(data.table)
 ```
 
 We first have to read and clean the data to get usable data frames. We don't 
@@ -74,42 +76,158 @@ provided feedback on it; we only need the actual users; people who enrolled
 after the launch of the course with the intention to actually learn something 
 new!
 
-```{r read-the-data}
-participants <- read.csv("raw/20230724_courseid_838_participants.csv")
-progress <- read.csv("raw/20230724_progress.pbfr.csv")
-quiz <- read.csv("raw/20230724_PBfR-Quiz.csv")
+```{r read-all-data}
+# List all the files in the raw folder including their date
+data_files <- data.frame(filename = list.files(path = "raw", pattern = ".csv"))
+data_files$filenamedates <- as.Date(str_extract(pattern = "[0-9]+[0-9]+[0-9]+", 
+                                                string = data_files$filename),
+                                    format = "%Y%m%d")
+
+# Sort by date using data.table::setorder (ascending = most recent file last)
+setorder(data_files, filenamedates, na.last = TRUE)
+
+# Select all files of every type (participants, progress or quiz)
+participants_files <- data_files %>% filter(str_detect(filename, 
+                                                       "courseid_838_participants"))
+progress_files <- data_files %>% filter(str_detect(filename, 
+                                                   "progress"))
+quiz_files <- data_files %>% filter(str_detect(filename, 
+                                               "PBfR-Quiz"))
+
+# Read in the participants files and name them using the corresponding date
+participants_list <- list()
+participants_list <- lapply(participants_files$filename, function(file) {
+  read.csv(paste0("raw/", file), header = TRUE)
+})
+
+names(participants_list) <- participants_files$filenamedates
+
+# Read in the progress files and name them using the corresponding date
+progress_list <- list()
+progress_list <- lapply(progress_files$filename, function(file) {
+  read.csv(paste0("raw/", file), header = TRUE)
+})
+
+# Name each list element with the file names (without the ".csv" extension)
+names(progress_list) <- progress_files$filenamedates
+
+# Read in the quiz files and name them using the corresponding date
+quiz_list <- list()
+quiz_list <- lapply(quiz_files$filename, function(file) {
+  read.csv(paste0("raw/", file), header = TRUE)
+})
+
+# Name each list element with the file names (without the ".csv" extension)
+names(quiz_list) <- quiz_files$filenamedates
 ```
 
 ```{r select-actual-users}
-# Create a subset of progress and quiz so that they only contain the correct 
-# participants (i.e., only people who were *not* involved in the creation or 
-# reviewing of the course; these people are labelled as "Red")
-participants_relevant <- participants %>% 
+# Filter the most recent dataframe to only contain the correct participants
+# i.e. only people who were *not* involved in the creation or reviewing of the
+# course; these people are labelled as "Red" in the Groups variable
+most_recent_dataframe  <- participants_list[[length(participants_list)]] %>% 
         filter(!(Groups == "Red" & !is.na(Groups)))
-progress_relevant <- subset(progress, 
-                            Email.address %in% participants_relevant$Email.address)
-quiz_relevant <- subset(quiz, 
-                        Email.address %in% participants_relevant$Email.address)
+
+# Function to filter the old participants dataframes, and the progress and quiz 
+# dataframes, based on the most recent participants list
+filterlist <- function(list_to_be_filtered){
+  lapply(list_to_be_filtered, 
+         function(df){
+           filtered_df <- df %>% semi_join(select(most_recent_dataframe, 
+                                                  Email.address))
+           return(filtered_df)
+         })
+}
+
+participants_list_filtered <- filterlist(participants_list)
+progress_list_filtered <- filterlist(progress_list)
+quiz_list_filtered <- filterlist(quiz_list)
+
+# Not needed anymore, but just keeping it here for history's sake
+#participants_list_filtered <- lapply(participants_list, function(df) {
+#  filtered_df <- df %>% semi_join(select(most_recent_dataframe, Email.address))
+#  return(filtered_df)
+#})
+
+# Also filter Progress and Quiz dataframes based on the most recent participants list
+#progress_list_filtered <- lapply(progress_list, function(df) {
+#  filtered_df <- df %>% semi_join(select(most_recent_dataframe, Email.address))
+#  return(filtered_df)
+#})
+
+# OLD
+#participants_relevant <- participants %>% 
+#        filter(!(Groups == "Red" & !is.na(Groups)))
+
+#progress_relevant <- subset(progress, 
+#                            Email.address %in% participants_relevant$Email.address)
+#quiz_relevant <- subset(quiz, 
+#                        Email.address %in% participants_relevant$Email.address)
 ```
+
 
 ## Number of participants
 
 ```{r n-participants}
+# NEEDS TO BE REDONE WITH LIST VARIABLES
 n_participants <- dim(participants_relevant)[1]
-n_participants_uu <- sum(grepl("@uu.nl$", participants_relevant$Email.address))
-n_participants_students <- sum(grepl("@students.uu.nl$", participants_relevant$Email.address))
-n_other <- n_participants - n_participants_uu - n_participants_students
+
+participants_df <- data.frame(
+  date = "2023-07-24",
+  uu = sum(grepl("@uu.nl$", participants_relevant$Email.address)),
+  uu_students = sum(grepl("@students.uu.nl$", participants_relevant$Email.address))
+)
+
+participants_df$other <- n_participants - participants_df$uu - participants_df$uu_students
 ```
 
 There are currently `n_participants` enrolled in the course. 
-`n_participants_uu` of them are enrolled with their "@uu.nl" email address, and 
-`n_participants_students` of them with the "@students.uu.nl" email address. 
-`n_other` participants are either from an external institution or have used a 
+`particpants_df$uu[1]` of them are enrolled with their "@uu.nl" email address, and 
+`particpants_df$uu_students[1]` of them with the "@students.uu.nl" email address. 
+`particpants_df$other[1]` participants are either from an external institution or have used a 
 personal email address to enroll in the course.
+
+```{r plot-participants}
+# From wide to long
+participants_dflong <- pivot_longer(data = participants_df, 
+                                    cols = c(uu, uu_students, other))
+
+participants_dflong$name <- factor(participants_dflong$name, levels = c("uu", "uu_students", "other"))
+
+participantsplot <- ggplot(data = participants_dflong, aes(x=name, y=value)) +
+  geom_bar(stat = "identity", fill = "yellow") +
+  labs(title = "Participants on July 24th 2023",
+       x = "Type of participant", y = "Number of participants")
+participantsplot
+```
+```{r plot-participants}
+# From wide to long
+participants_dflong <- pivot_longer(data = participants_df, 
+                                    cols = c(uu, uu_students, other),
+                                    #names_to = "variable",
+                                    #values_to = "value"
+                                    )
+
+# Convert the "date" column to a proper date format
+participants_dflong$date <- as.Date(participants_dflong$date)
+
+# Set the order of the variable levels
+participants_dflong$name <- factor(participants_dflong$name, levels = c("uu", "uu_students", "other"))
+
+# Create a stacked bar plot
+ggplot(participants_dflong, aes(x = date, y = value, fill = name)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Stacked Bar Plot",
+       x = "Date", y = "Values",
+       fill = "Categories") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Adjust x-axis labels for better readability
+```
+
+
+
 
 **TODO**: 
 
-- Create graph
 - Read in data from over time
 - Create graph of sample size over time
 
