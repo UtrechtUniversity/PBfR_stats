@@ -28,3 +28,6 @@ format:
      code-tools: true
      highlight-style: github
      favicon: assets/favicon.ico
+
+execute: 
+  warning: false
