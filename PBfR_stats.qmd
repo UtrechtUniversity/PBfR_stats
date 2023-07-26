@@ -13,47 +13,43 @@ The module is embedded within the Utrecht University Moodle platform,
 "ULearning", but the raw module materials are also available 
 [online via Zenodo](https://doi.org/10.5281/zenodo.7930571).
 
-## Getting the data out of the ULearning platform
+## Getting, reading and cleaning the data
 
-To obtain the data for this report, the following steps should be followed:
+### Downloading the data
 
-#### 1. Progress report
+To obtain the data for this report from the ULearning platform, the following 
+steps should be followed by a teacher/administrator in the ULearning platform:
 
-1.  From course main page, go to Reports > Activity completion
-2.  Download the file to the spreadsheet format (UTF-8 .csv)
-3.  Save the file in the `raw` folder. Add the date of downloading in the 
-downloaded csv file "YYYYMMDD_progress.pbfr.csv"
-
-#### 2. List of enrolled participants
+##### 1. List of enrolled participants
 
 1.  From course main page, go to Participants.
 2.  Set the following selection criteria: Match *All* of the following
-
--   Match ANY Roles: Student, Guest, Authenticated user, Authenticated user on 
-site home AND
--   Match None Groups: Red
-
+    - Match ANY Roles: Student, Guest, Authenticated user, Authenticated user on site home AND
+    - Match None Groups: Red
 3.  Click "Apply filters"
 4.  Select all users
 5.  Under "With selected users...", select "Comma-separated values (.csv)"
 6.  Save the file in the `raw` folder. Add the date of downloading in the 
 downloaded csv file "YYYYMMDD_courseid_838_participants.csv"
 
-#### 3. Quiz results
+##### 2. Progress report
+
+1.  From course main page, go to Reports > Activity completion
+2.  Download the file to the spreadsheet format (UTF-8 .csv)
+3.  Save the file in the `raw` folder. Add the date of downloading in the 
+downloaded csv file "YYYYMMDD_progress.pbfr.csv"
+
+##### 3. Quiz results
 
 1.  From course main page, go to Chapter 6 \| Closing \> Final Quiz
 2.  Click "Attempts: \[##\]" (The \## indicating the number of attempts)
 3.  Under What to include in the report, select:
-
--   Attempts from enrolled users who have attempted the quiz
--   Attempts that are In progress, Overdue, Finished, and Never submitted
--   Check Show at most one finished attempt per user (Highest grade)
-
+    - Attempts from enrolled users who have attempted the quiz
+    - Attempts that are In progress, Overdue, Finished, and Never submitted
+    - Check Show at most one finished attempt per user (Highest grade)
 4.  Under Display options:
-
--   Make sure Page size is larger than the amount of attempts.
--   Marks for each question: Yes
-
+    - Make sure Page size is larger than the amount of attempts.
+    - Marks for each question: Yes
 5.  Click Show report.
 6.  Select all participants using the checkbox above the first name in the list.
 7.  Download the data as Comma separated values (.csv)
@@ -62,13 +58,7 @@ downloaded csv file "YYYYMMDD_courseid_838_participants.csv"
 The data are not shared because they contain personal data (e.g., names, email 
 addresses and information about participants' progress in the module).
 
-## Reading and cleaning the data
-
-```{r load-packages}
-library(tidyverse)
-library(ggplot2)
-library(data.table)
-```
+### Reading and cleaning the data
 
 We first have to read and clean the data to get usable data frames. We don't 
 want to include people who were involved in the creation of the course or who 
@@ -76,7 +66,15 @@ provided feedback on it; we only need the actual users; people who enrolled
 after the launch of the course with the intention to actually learn something 
 new!
 
+```{r load-packages}
+#| code-summary: "See code to load packages"
+library(tidyverse)
+library(ggplot2)
+library(data.table)
+```
+
 ```{r read-all-data}
+#| code-summary: "See code to read all data files"
 # List all the files in the raw folder including their date
 data_files <- data.frame(filename = list.files(path = "raw", pattern = ".csv"))
 data_files$filenamedates <- as.Date(str_extract(pattern = "[0-9]+[0-9]+[0-9]+", 
@@ -94,34 +92,28 @@ progress_files <- data_files %>% filter(str_detect(filename,
 quiz_files <- data_files %>% filter(str_detect(filename, 
                                                "PBfR-Quiz"))
 
-# Read in the participants files and name them using the corresponding date
-participants_list <- list()
-participants_list <- lapply(participants_files$filename, function(file) {
-  read.csv(paste0("raw/", file), header = TRUE)
-})
+# Function to read in files from the file list and put the dataframes in a list
+# with the date as the dataframe / list item name
+readfiles <- function(filesvar){
+  dataset <- list()
+  dataset <- lapply(filesvar$filename, 
+                    function(file){
+                      read.csv(paste0("raw/", file), header = TRUE)
+                      }
+                    )
+  names(dataset) <- filesvar$filenamedates
+  return(dataset)
+}
 
-names(participants_list) <- participants_files$filenamedates
-
-# Read in the progress files and name them using the corresponding date
-progress_list <- list()
-progress_list <- lapply(progress_files$filename, function(file) {
-  read.csv(paste0("raw/", file), header = TRUE)
-})
-
-# Name each list element with the file names (without the ".csv" extension)
-names(progress_list) <- progress_files$filenamedates
-
-# Read in the quiz files and name them using the corresponding date
-quiz_list <- list()
-quiz_list <- lapply(quiz_files$filename, function(file) {
-  read.csv(paste0("raw/", file), header = TRUE)
-})
-
-# Name each list element with the file names (without the ".csv" extension)
-names(quiz_list) <- quiz_files$filenamedates
+# Read in the participant, progress and quiz files
+participants_list <- readfiles(participants_files)
+progress_list <- readfiles(progress_files)
+quiz_list <- readfiles(quiz_files)
 ```
 
 ```{r select-actual-users}
+#| code-summary: "See code to select only relevant participants"
+
 # Filter the most recent dataframe to only contain the correct participants
 # i.e. only people who were *not* involved in the creation or reviewing of the
 # course; these people are labelled as "Red" in the Groups variable
@@ -142,94 +134,78 @@ filterlist <- function(list_to_be_filtered){
 participants_list_filtered <- filterlist(participants_list)
 progress_list_filtered <- filterlist(progress_list)
 quiz_list_filtered <- filterlist(quiz_list)
-
-# Not needed anymore, but just keeping it here for history's sake
-#participants_list_filtered <- lapply(participants_list, function(df) {
-#  filtered_df <- df %>% semi_join(select(most_recent_dataframe, Email.address))
-#  return(filtered_df)
-#})
-
-# Also filter Progress and Quiz dataframes based on the most recent participants list
-#progress_list_filtered <- lapply(progress_list, function(df) {
-#  filtered_df <- df %>% semi_join(select(most_recent_dataframe, Email.address))
-#  return(filtered_df)
-#})
-
-# OLD
-#participants_relevant <- participants %>% 
-#        filter(!(Groups == "Red" & !is.na(Groups)))
-
-#progress_relevant <- subset(progress, 
-#                            Email.address %in% participants_relevant$Email.address)
-#quiz_relevant <- subset(quiz, 
-#                        Email.address %in% participants_relevant$Email.address)
 ```
-
 
 ## Number of participants
 
 ```{r n-participants}
-# NEEDS TO BE REDONE WITH LIST VARIABLES
-n_participants <- dim(participants_relevant)[1]
+#| code-summary: "See code to calculate the number of participants"
 
-participants_df <- data.frame(
-  date = "2023-07-24",
-  uu = sum(grepl("@uu.nl$", participants_relevant$Email.address)),
-  uu_students = sum(grepl("@students.uu.nl$", participants_relevant$Email.address))
-)
+# Initialize empty dataframe to be filled in the for-loop
+vectorlength = length(participants_list_filtered)
+nr_participants <- data.frame(date = vector(length = vectorlength),
+                              total = vector(length = vectorlength),
+                              uu = vector(length = vectorlength),
+                              uu_students = vector(length = vectorlength),
+                              other = vector(length = vectorlength))
 
-participants_df$other <- n_participants - participants_df$uu - participants_df$uu_students
+# For each dataframe in the participants list
+for(dataframe in 1:vectorlength){
+  # Put the date in the date column of nr_participants dataframe
+  nr_participants$date[dataframe] <- names(participants_list_filtered[dataframe])
+  
+  # Calculate number of total, UU, UU students and other people
+  nr_participants$total[dataframe] <- dim(participants_list_filtered[[dataframe]])[1]
+  nr_participants$uu[dataframe] <- sum(grepl("@uu.nl$", 
+                                             participants_list_filtered[[dataframe]]$Email.address))
+  nr_participants$uu_students[dataframe] <- sum(grepl("@students.uu.nl$", 
+                                             participants_list_filtered[[dataframe]]$Email.address))
+  nr_participants$other[dataframe] <- nr_participants$total[dataframe] - nr_participants$uu[dataframe] - nr_participants$uu_students[dataframe]
+}
+
+
+# Current number of participants
+n_participants <- dim(participants_list[[length(participants_list)]])[1]
+
 ```
 
-There are currently `n_participants` enrolled in the course. 
-`particpants_df$uu[1]` of them are enrolled with their "@uu.nl" email address, and 
-`particpants_df$uu_students[1]` of them with the "@students.uu.nl" email address. 
-`particpants_df$other[1]` participants are either from an external institution or have used a 
-personal email address to enroll in the course.
+As of `r nr_participants$date[length(nr_participants)]`, there are 
+`r nr_participants$total[length(nr_participants)]` enrolled in the course. 
+`r nr_participants$uu[length(nr_participants)]` of them are enrolled with their 
+"@uu.nl" email address, and `r nr_participants$uu_students[length(nr_participants)]` 
+of them with the "@students.uu.nl" email address. 
+`r nr_participants$other[length(nr_participants)]` participants are either from 
+an external institution or have used a personal email address to enroll in the course.
+
+In the below bar chart, you can see the development of the number of 
+participants in the course over time.
 
 ```{r plot-participants}
-# From wide to long
-participants_dflong <- pivot_longer(data = participants_df, 
-                                    cols = c(uu, uu_students, other))
+#| code-summary: "See code to plot the participants over time "
 
-participants_dflong$name <- factor(participants_dflong$name, levels = c("uu", "uu_students", "other"))
-
-participantsplot <- ggplot(data = participants_dflong, aes(x=name, y=value)) +
-  geom_bar(stat = "identity", fill = "yellow") +
-  labs(title = "Participants on July 24th 2023",
-       x = "Type of participant", y = "Number of participants")
-participantsplot
-```
-```{r plot-participants}
 # From wide to long
-participants_dflong <- pivot_longer(data = participants_df, 
-                                    cols = c(uu, uu_students, other),
+nr_participants_long <- pivot_longer(data = nr_participants, 
+                                    cols = c(uu, uu_students, other)
                                     #names_to = "variable",
                                     #values_to = "value"
                                     )
 
 # Convert the "date" column to a proper date format
-participants_dflong$date <- as.Date(participants_dflong$date)
+nr_participants_long$date <- as.Date(nr_participants_long$date)
 
 # Set the order of the variable levels
-participants_dflong$name <- factor(participants_dflong$name, levels = c("uu", "uu_students", "other"))
+nr_participants_long$name <- factor(nr_participants_long$name, levels = c("uu", "uu_students", "other"))
 
 # Create a stacked bar plot
-ggplot(participants_dflong, aes(x = date, y = value, fill = name)) +
+# TODO: style so that it looks better!
+ggplot(nr_participants_long, aes(x = date, y = value, fill = name)) +
   geom_bar(stat = "identity") +
-  labs(title = "Stacked Bar Plot",
-       x = "Date", y = "Values",
-       fill = "Categories") +
+  labs(title = "Course participants over time",
+       x = "Date", y = "Number of participants",
+       fill = "Type of participant") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Adjust x-axis labels for better readability
 ```
 
-
-
-
-**TODO**: 
-
-- Read in data from over time
-- Create graph of sample size over time
 
 ## Participants' progress
 
@@ -247,8 +223,7 @@ TODO:
 
 ```{r clean-up-quiz-data}
 # Only get Started.on from 2023-05-20 onwards
-# Skip last row that says "Overall average" under Last.name
-# Skip names
+# Delete last row that says "Overall average" under Last.name
 ```
 
 ## Using tabsets
