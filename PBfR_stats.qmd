@@ -151,22 +151,20 @@ nr_participants <- data.frame(date = vector(length = vectorlength),
 
 # For each dataframe in the participants list
 for(dataframe in 1:vectorlength){
+  
   # Put the date in the date column of nr_participants dataframe
   nr_participants$date[dataframe] <- names(participants_list_filtered[dataframe])
   
-  # Calculate number of total, UU, UU students and other people
+  # Calculate total number of participants, and UU and UU students
   nr_participants$total[dataframe] <- dim(participants_list_filtered[[dataframe]])[1]
   nr_participants$uu[dataframe] <- sum(grepl("@uu.nl$", 
                                              participants_list_filtered[[dataframe]]$Email.address))
   nr_participants$uu_students[dataframe] <- sum(grepl("@students.uu.nl$", 
                                              participants_list_filtered[[dataframe]]$Email.address))
+  
+  # Nr of other people = total - UU - UU_students
   nr_participants$other[dataframe] <- nr_participants$total[dataframe] - nr_participants$uu[dataframe] - nr_participants$uu_students[dataframe]
 }
-
-
-# Current number of participants
-n_participants <- dim(participants_list[[length(participants_list)]])[1]
-
 ```
 
 As of `r nr_participants$date[length(nr_participants)]`, there are 
@@ -213,6 +211,109 @@ TODO:
 
 - How many participants completed each block? (Graph)
 - How does this go over time?
+
+```{r plot-latest-progress}
+#| code-summary: "See code to plot latest progress per chapter and group"
+
+# Copy progress object to make further edits/cleaning
+progress_list_cleaned <- progress_list_filtered
+
+# Clean up the progress dataframes
+for(dataframe in 1:length(progress_list_cleaned)){
+  
+  # Delete columns we won't use and turn character completion into numeric 0 or 1
+  progress_list_cleaned[[dataframe]] <- progress_list_cleaned[[dataframe]] %>%
+    select(-starts_with("X")) %>%
+    mutate_at(vars(-Email.address), ~ifelse(. == "Completed", 1, 0))
+  
+  # Create a factor variable for group membership (UU, student or other)
+  progress_list_cleaned[[dataframe]]$group <- as.factor(ifelse(grepl("@uu.nl$", 
+                                                                     progress_list_cleaned[[dataframe]]$Email.address), 
+                                                               "uu",
+                                                               ifelse(grepl("@students.uu.nl$",
+                                                                            progress_list_cleaned[[dataframe]]$Email.address),
+                                                                      "uu_students",
+                                                                      "other")))
+}
+
+# Select the latest progress file
+latest_progress_df <- progress_list_cleaned[[length(progress_list_cleaned)]]
+
+# Group blocks into sections for easier visualization
+latest_progress_long <- latest_progress_df %>%
+  pivot_longer(cols = -c(Email.address, group), 
+               names_to = "block", 
+               values_to = "completion") %>%
+  mutate(chapter = ifelse(startsWith(block, "Welcome") | 
+                            startsWith(block, "Introduction.to.Personal.Data.under.the.GDPR") | 
+                            startsWith(block, "GDPR") | 
+                            startsWith(block, "What.is.Personal.Data") | 
+                            startsWith(block, "Special.Categories.of.Personal.Data") |
+                            startsWith(block, "Roles.in.the.GDPR"),
+                          "Chapter 1", ifelse(
+                            startsWith(block, "Introduction.to.Lawfulness") |
+                              startsWith(block, "Legal.Basis.for.Processing.Data") |
+                              startsWith(block, "Public.Interest") |
+                              startsWith(block, "Consent") |
+                              startsWith(block, "How.to.Inform.Data.Subjects") |
+                              startsWith(block, "Data.Subject.Rights"),
+                            "Chapter 2", ifelse(
+                              startsWith(block, "Introduction.to.Planning.Your.Project") |
+                                startsWith(block, "Privacy.by.Design.and.Privacy.by.Default") |
+                                startsWith(block, "Demonstrating.Compliance") |
+                                startsWith(block, "Privacy.Scan.and.DPIA") |
+                                startsWith(block, "Common.Privacy.Risks") |
+                                startsWith(block, "Reporting.a.Data.Breach"),
+                              "Chapter 3", ifelse(
+                                startsWith(block, "Introduction.to.Practical.Measures") |
+                                  startsWith(block, "Levels.of.Data.Security") |
+                                  startsWith(block, "Access.Control") |
+                                  startsWith(block, "Encryption") |
+                                  startsWith(block, "Pseudonymisation.and.Anonymisation") |
+                                  startsWith(block, "De.identification.in.Practice") |
+                                  startsWith(block, "Processing.Tools"),
+                                "Chapter 4", ifelse(
+                                  startsWith(block, "Introduction.to.Storing.and.Sharing.Personal.Data") |
+                                    startsWith(block, "Storing.Personal.Data") |
+                                    startsWith(block, "Agreements.in.Research") |
+                                    startsWith(block, "Sharing.Personal.Data") |
+                                    startsWith(block, "Making.Personal.Data.FAIR"),
+                                  "Chapter 5", ifelse(
+                                    startsWith(block, "Final.Quiz") |
+                                      startsWith(block, "Evaluate.this.course"),
+                                    "Chapter 6", "Not assigned"
+                                  )
+                                )
+                              )
+                            )
+                          )
+  )
+  )
+
+# Plot average progress score (per person) per section per group 
+latest_progress_long %>%
+  group_by(Email.address, chapter, group) %>%
+  summarise(avg_completion_rate = mean(completion)) %>%
+  ggplot(aes(x = chapter, 
+             y = avg_completion_rate*100, 
+             fill = group)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Chapter", y = "Average progress (%)", 
+       title = "Average progress (%) per Chapter by Group") +
+  scale_fill_discrete(name = "Group", 
+                      labels = c("uu" = paste0("UU staff (n = ", sum(latest_progress_df$group=="uu"), ")"), 
+                                 "uu_students" = paste0("UU students (n = ", sum(latest_progress_df$group=="uu_students"), ")"), 
+                                 "other" = paste0("Others (n = ", sum(latest_progress_df$group=="other"), ")")))
+``` 
+
+```{r progress-over-time}
+# Plot 2 line plot: 
+# x = time
+# y = average completion per participant in %
+# How would we calculate the progress over the whole course? Because that is what we would need for a time-plot
+# Row-wise percentage per participant, average that? Average of all blocks per participant * 100, average for all participants
+
+```
 
 ## Quiz results
 
