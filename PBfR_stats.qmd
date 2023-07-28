@@ -168,7 +168,7 @@ for(dataframe in 1:vectorlength){
 ```
 
 As of `r nr_participants$date[length(nr_participants)]`, there are 
-`r nr_participants$total[length(nr_participants)]` enrolled in the course. 
+`r nr_participants$total[length(nr_participants)]` participants enrolled in the course. 
 `r nr_participants$uu[length(nr_participants)]` of them are enrolled with their 
 "@uu.nl" email address, and `r nr_participants$uu_students[length(nr_participants)]` 
 of them with the "@students.uu.nl" email address. 
@@ -207,10 +207,8 @@ ggplot(nr_participants_long, aes(x = date, y = value, fill = name)) +
 
 ## Participants' progress
 
-TODO:
-
-- How many participants completed each block? (Graph)
-- How does this go over time?
+Below you can see the average progress per group of participants for each block
+in the course as of `r names(progress_list_filtered[length(progress_list_filtered)])`.
 
 ```{r plot-latest-progress}
 #| code-summary: "See code to plot latest progress per chapter and group"
@@ -306,13 +304,54 @@ latest_progress_long %>%
                                  "other" = paste0("Others (n = ", sum(latest_progress_df$group=="other"), ")")))
 ``` 
 
-```{r progress-over-time}
-# Plot 2 line plot: 
-# x = time
-# y = average completion per participant in %
-# How would we calculate the progress over the whole course? Because that is what we would need for a time-plot
-# Row-wise percentage per participant, average that? Average of all blocks per participant * 100, average for all participants
+Below, you can see the average progress over time. On July 11th, the ULearning
+platform got an update. Therefore, from then onwards, the progress for every 
+user was set to 0 again, hence the drop in progress in July 2023.
 
+```{r progress-over-time}
+#| code-summary: "See code to plot average progress over time"
+
+# Create an empty list to store the results
+avg_progress_pp <- list()
+
+# For each dataframe in the list object progress_over_time
+for(dataframe in 1:length(progress_list_cleaned)){
+  avg_progress_pp[[dataframe]] <- progress_list_cleaned[[dataframe]] %>%
+    # From wide to long format based on the Email address and group
+    pivot_longer(cols = -c(Email.address, group), 
+                 names_to = "block", 
+                 values_to = "completion") %>%
+    group_by(Email.address, group) %>%
+    # calculate average completion rate per participant
+    summarise(progress = mean(completion)) %>%
+    # take the date from the list object name and put it in a new date column for all rows in the dataframe
+    mutate(date = as.Date(rep(names(progress_list_cleaned)[dataframe], n())))
+}
+
+avg_progress_pp_flat <- bind_rows(avg_progress_pp)
+
+# Line plot of average progress per group
+#avg_progress_pp_flat %>%
+#  group_by(group, date) %>%
+#  summarise(avg_progress = mean(progress)*100) %>%
+#  ggplot(aes(x = date, y = avg_progress, color = group)) +
+#  geom_line() +
+#  geom_point(alpha = 0.7, position = position_jitter(width = 0.2)) +
+#  labs(x = "Date", y = "Average Progress (%)", title = "Average Progress Over Time per Group") +
+#  theme_minimal()
+
+# Line and scatter combined
+avg_progress_pp_flat %>%
+  group_by(group, date) %>%
+  summarise(avg_progress = mean(progress) * 100) %>%
+  ggplot(aes(x = date, y = avg_progress, color = group)) +
+  geom_line() +
+  geom_point(data = avg_progress_pp_flat, aes(x = date, y = progress*100), alpha = 0.7, position = position_jitter(width = 0.2)) +
+  labs(x = "Date", y = "Average Progress (%)", title = "Average Progress Over Time per Group with Scatter Points") +
+  theme_minimal()
+
+# Number of people underlying each average: 
+# avg_progress_pp_flat %>% group_by(group, date) %>% summarise(count = n())
 ```
 
 ## Quiz results
@@ -322,39 +361,15 @@ TODO:
 -   Average grade overall
 -   Average grade per quiz question (percentage)
 
-```{r clean-up-quiz-data}
-# Only get Started.on from 2023-05-20 onwards
-# Delete last row that says "Overall average" under Last.name
+```{r quiz-plot}
+# First Remove duplicate rows from all dataframes
+
+# Plot: From latest quiz results, plot average grade per group (barplot)
+# x = group, y = average grade (out of 10)
+
+# Table: From latest quiz results, put in a table the average scores (%) per quiz question
+# rows = question, cols  = question, score
+
+# Plot: with all dataframes, plot nr of finished quizzes over time
+# x = date, y = nr finished
 ```
-
-## Using tabsets
-
-::: panel-tabset
-## Block 1
-
-``` r
-fizz_buzz <- function(fbnums = 1:50) {
-  output <- dplyr::case_when(
-    fbnums %% 15 == 0 ~ "FizzBuzz",
-    fbnums %% 3 == 0 ~ "Fizz",
-    fbnums %% 5 == 0 ~ "Buzz",
-    TRUE ~ as.character(fbnums)
-  )
-  print(output)
-}
-```
-
-## Block 2
-
-``` python
-def fizz_buzz(num):
-  if num % 15 == 0:
-    print("FizzBuzz")
-  elif num % 5 == 0:
-    print("Buzz")
-  elif num % 3 == 0:
-    print("Fizz")
-  else:
-    print(num)
-```
-:::
