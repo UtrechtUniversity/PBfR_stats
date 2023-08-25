@@ -79,7 +79,7 @@ uucol <- "#FFCD00"
 
 styling <- list(
   theme_classic(),
-  scale_fill_manual(values = UU_pallette),
+  #scale_fill_manual(values = UU_pallette),
   theme(legend.text = element_text(size = 10),
         legend.position = "bottom",
         legend.title = element_blank(),
@@ -190,7 +190,7 @@ for(dataframe in 1:vectorlength){
 }
 ```
 
-<!-- As of `r nr_participants$date[length(nr_participants)]`, there are `r nr_participants$total[length(nr_participants)]` participants enrolled in the course. `r nr_participants$uu[length(nr_participants)]` of them are enrolled with their "@uu.nl" email address, and `r nr_participants$uu_students[length(nr_participants)]` of them with the "@students.uu.nl" email address. `r nr_participants$other[length(nr_participants)]` participants are either from an external institution or have used a personal email address to enroll in the course. -->
+As of `r nr_participants$date[length(nr_participants$date)]`, there are `r nr_participants$total[length(nr_participants$date)]` participants enrolled in the course. `r nr_participants$uu[length(nr_participants$date)]` of them are enrolled with their "@uu.nl" email address, and `r nr_participants$uu_students[length(nr_participants$date)]` of them with the "@students.uu.nl" email address. `r nr_participants$other[length(nr_participants$date)]` participants are either from an external institution or have used a personal email address to enroll in the course.
 
 In the below bar chart, you can see the development of the number of participants in the course over time.
 
@@ -211,19 +211,33 @@ nr_participants_long$date <- as.Date(nr_participants_long$date)
 nr_participants_long$name <- factor(nr_participants_long$name, levels = c("uu", "uu_students", "other"))
 
 # Create a stacked bar plot
+# Calculate midpoints for label positioning
+nr_participants_long <- nr_participants_long %>%
+  group_by(date) %>%
+  arrange(desc(name)) %>%
+  mutate(midpoint = cumsum(value) - 0.5 * value,
+         prev_height = lag(cumsum(value), default = 0))
+
+# Adjust y-axis limits
+y_max <- max(nr_participants_long$midpoint) + max(nr_participants_long$value) / 2
+
+
+# Adjust label positioning
 ggplot(nr_participants_long, aes(x = date, y = value, fill = name)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = after_stat(y), group = date), 
-            vjust = -0.5, color = "black", size = 3.5) + 
+  geom_text(aes(label = ifelse(value > 0, value, ""),
+                y = prev_height + value / 2, group = name),
+            vjust = 0.5, color = "black", size = 3.5) +
+  ylim(0, y_max) +  # Set y-axis limits
   labs(title = "Course participants over time",
        x = "Date", y = "Number of participants",
        fill = "Type of participant") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  + # Adjust x-axis labels for better readability
-  styling +
-  scale_fill_discrete(name = "Group", 
-                      labels = c("uu" = "UU staff", 
-                                 "uu_students" = "UU students", 
-                                 "other" = "Others"))
+  scale_fill_manual(name = "Group", 
+                    labels = c("uu" = "UU staff", 
+                               "uu_students" = "UU students", 
+                               "other" = "Others"),
+                    values = UU_pallette) +
+  styling
 ```
 
 ## Participants' progress
@@ -313,25 +327,32 @@ latest_progress_long <- latest_progress_df %>%
 
 # Plot average progress score (per person) per section per group 
 latest_progress_long %>%
-  group_by(Email.address, chapter, group) %>%
+  group_by(chapter, group) %>%
   summarise(avg_completion_rate = mean(completion)) %>%
+  ungroup() %>%
   ggplot(aes(x = chapter, 
-             y = avg_completion_rate*100, 
+             y = avg_completion_rate * 100, 
              fill = group)) +
-  #  geom_col(colour="black",width=0.5,    
-  #         position=position_dodge(0.5)) +
-  geom_bar(stat = "identity", position =position_dodge(0.9)) +
-  #geom_text(aes(label=round(avg_completion_rate*100,0)),
-  #          size=3.5, color="black", position = position_dodge(0.5)) +
+  geom_bar(stat = "identity", position = position_dodge(0.9)) +
+  geom_text(aes(label = paste0(round(avg_completion_rate * 100, 0), "%"),
+                y = avg_completion_rate * 100 + 2),  # Adjust label position as needed
+            size = 3.5, color = "black", position = position_dodge(0.9)) +
   labs(x = "Chapter", y = "Average progress (%)", 
        fill = "Group",
        title = paste0("Average progress (%) on ",
-                    names(progress_list_filtered[length(progress_list_filtered)]))) +
-  styling +
-  scale_fill_discrete(name = "Group", 
-                      labels = c("uu" = paste0("UU staff (n = ", sum(latest_progress_df$group=="uu"), ")"), 
-                                 "uu_students" = paste0("UU students (n = ", sum(latest_progress_df$group=="uu_students"), ")"), 
-                                 "other" = paste0("Others (n = ", sum(latest_progress_df$group=="other"), ")")))
+                      names(progress_list_filtered[length(progress_list_filtered)]))) +
+  scale_fill_manual(name = "Group", 
+                    labels = c("uu" = paste0("UU staff (n = ",
+                                             sum(latest_progress_df$group == "uu"), 
+                                             ")"), 
+                               "uu_students" = paste0("UU students (n = ",
+                                                      sum(latest_progress_df$group == "uu_students"), 
+                                                      ")"), 
+                               "other" = paste0("Others (n = ",
+                                                sum(latest_progress_df$group == "other"), 
+                                                ")")),
+                    values = UU_pallette) +
+  styling
 ```
 
 Below, you can see the average progress over time. On July 11th, the ULearning platform got an update. Therefore, from then onwards, the progress for every user was set to 0 again, hence the drop in progress in July 2023.
@@ -365,18 +386,23 @@ avg_progress_pp_flat <- bind_rows(avg_progress_pp)
 avg_progress_pp_flat %>%
   group_by(group, date) %>%
   summarise(avg_progress = mean(progress) * 100) %>%
-  ggplot(aes(x = date, y = avg_progress, color = group)) +
-  geom_line(size = 1) +
+  ggplot(aes(x = date, 
+             y = avg_progress, 
+             color = group)) +
+  geom_line(linewidth = 1) +
   geom_point(data = avg_progress_pp_flat, 
-             aes(x = date, y = progress*100), 
+             aes(x = date, 
+                 y = progress*100), 
              alpha = 0.9) + 
-  labs(x = "Date", y = "Average Progress (%)", 
+  labs(x = "Date", 
+       y = "Average Progress (%)", 
        title = "Average Progress Over Time per Group") +
-  styling +
-  scale_fill_discrete(name = "Group", 
+  scale_color_manual(name = "Group", 
                       labels = c("uu" = "UU staff", 
                                  "uu_students" = "UU students", 
-                                 "other" = "Others"))
+                                 "other" = "Others"),
+                    values = UU_pallette) +
+  styling
 ```
 
 ## Quiz results
@@ -433,26 +459,41 @@ results.
 # Select the latest quiz file
 latest_quiz_df <- quiz_list_cleaned[[length(quiz_list_cleaned)]]
 
-# Plot average quiz grade per group 
+latest_quiz_df_with_counts <- latest_quiz_df %>%
+  mutate(group = factor(group, levels = c("uu",
+                                          "uu_students",
+                                          "other"))) %>%
+  group_by(group) %>%
+  summarise(n = n()) %>%
+  mutate(label = case_when(
+    group == "uu" ~ paste0("UU staff (n = ", n, ")"),
+    group == "uu_students" ~ paste0("UU students (n = ", n, ")"),
+    group == "other" ~ paste0("Others (n = ", n, ")")
+  )) %>%
+  ungroup()
+
+mean_grades <- latest_quiz_df %>%
+  group_by(group) %>%
+  summarise(mean_grade = round(mean(Grade, na.rm = TRUE),1))
+
 latest_quiz_df %>%
-  ggplot(aes(x = group, y = mean(Grade, na.rm = TRUE))) +
-  geom_bar(stat = "identity", position = "dodge") +
+  ggplot(aes(x = group, y = Grade, fill = group)) +
+  stat_summary(geom = "bar", fun = "mean", position = "dodge", na.rm = TRUE) +
   labs(x = "Group", y = "Average grade", 
        title = "Average grade per group") +
-  scale_fill_discrete(name = "Group", 
-                      labels = c("uu" = paste0("UU staff (n = ", 
-                                               sum(latest_progress_df$group=="uu"), ")"), 
-                                 "uu_students" = paste0("UU students (n = ",
-                                                        sum(latest_progress_df$group=="uu_students"), ")"), 
-                                 "other" = paste0("Others (n = ", 
-                                                  sum(latest_progress_df$group=="other"), ")"))) +
-  styling
+  geom_text(data = mean_grades, aes(x = group, y = mean_grade,
+                                    label = sprintf("%.2f", mean_grade)),
+            position = position_dodge(width = 0.9), vjust = -0.5, size = 3.5) +
+  scale_x_discrete(labels = latest_quiz_df_with_counts$label) +
+  scale_fill_manual(values = UU_pallette) +
+  styling +
+  theme(legend.position = "none")  # Remove the legend
 ```
 
 Below is a table with the average scores (in %) per question in the most recent 
 quiz data.
 
-```{r quiz-table}
+```{r quiz-questionscores}
 #| code-summary: "See code to create the table"
 
 # From the latest quiz results, put in a table the average scores (%) per quiz question
@@ -461,26 +502,29 @@ quiz data.
 grade_columns <- grep("^Q", names(latest_quiz_df), value = TRUE)
 
 # Create the table
-latest_quiz_df %>%
+quiz_data_long <- latest_quiz_df %>%
   ungroup() %>%
   summarise(across(all_of(grade_columns), 
-                   ~ round(mean(as.numeric(.), na.rm = TRUE)/0.6*100, 0))) %>%
-  t() %>%
-  #cbind(rownames(.), .) %>%
-  kable(., format = "html",
-        col.names = names(.),
-        #caption = "Average score per quiz question (%)",
-        table.attr = 'cellpadding="3", cellspacing="3"') %>%
-  footnote(general = "Average score per quiz question (%)") %>%
-  kable_styling(bootstrap_options = c("striped", 
-                                      "hover", 
-                                      "condensed", 
-                                      "responsive"),
-                fixed_thead = T,
-                full_width = FALSE,
-                stripe_color = uucol,
-                position = "left"
-  )
+                   ~ round(mean(as.numeric(.), 
+                                na.rm = TRUE)/0.6*100, 
+                           0))) %>%
+  pivot_longer(cols = starts_with("Q"), 
+               names_to = "Question", 
+               values_to = "Score") %>%
+  mutate(Question = factor(Question, 
+                           levels = c("Q1", "Q2", "Q3", "Q4", 
+                                      "Q5", "Q6", "Q7", "Q8", 
+                                      "Q9", "Q10", "Q11", "Q12", 
+                                      "Q13", "Q14", "Q15", "Q16")))
+
+# Create bar plot
+ggplot(quiz_data_long, aes(x = Question, y = Score)) +
+  geom_bar(stat = "identity", fill = uucol) +
+  labs(x = "Question", 
+       y = "Average Score", 
+       title = "Average Score per Quiz Question (%)") +
+  geom_text(aes(label = Score), vjust = -0.5, size = 3.5) +
+  styling
 ```
 
 Below you can find the number of attempts (either in Progress or Finished)
@@ -506,7 +550,8 @@ for (date in names(quiz_list_cleaned)) {
   date <- as.Date(rep(date, 3))
   
   # Create a temporary dataframe for the current group
-  temp_df <- data.frame(group = groups,
+  temp_df <- data.frame(group = factor(groups,
+                                       levels = c("uu", "uu_students", "other")),
                         attempts = num_attempts,
                         date = date)
   
@@ -517,9 +562,15 @@ for (date in names(quiz_list_cleaned)) {
 # Line plot
 quizovertime %>%
   ggplot(aes(x = date, y = attempts, color = group)) +
-  geom_line() +
+  geom_line(linewidth = 1) +
   geom_point(alpha = 0.7) +
-  labs(x = "Date", y = "Number of attempts", title = "Number of quiz attempts made over time per group") +
-  styling +
-  scale_color_manual(values = UU_pallette)
+  labs(x = "Date", 
+       y = "Number of attempts", 
+       title = "Number of quiz attempts made over time per group") +
+  scale_color_manual(values = UU_pallette,
+                     name = "Group",  # Set the legend title
+                     labels = c("uu" = "UU staff", 
+                                "uu_students" = "UU students", 
+                                "other" = "Others")) +  # Set the legend labels
+  styling
 ```
