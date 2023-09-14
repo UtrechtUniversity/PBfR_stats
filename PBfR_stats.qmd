@@ -4,6 +4,11 @@ In this report, you'll find some data on the usage of the online training "Priva
 
 A description of and a registration link to the online module can be found on the [RDM Support website](https://www.uu.nl/en/research/research-data-management/walk-in-hours-workshops/privacy-basics-online-training). The module is embedded within the Utrecht University Moodle platform, "ULearning", but the raw module materials are also available [online via Zenodo](https://doi.org/10.5281/zenodo.7930571).
 
+::: {.callout-note}
+This report is primarily meant for internal monitoring purposes at the moment.
+We may adjust this report in a later stage, or move it to another web address!
+:::
+
 ## Getting, reading and cleaning the data
 
 ### Downloading the data
