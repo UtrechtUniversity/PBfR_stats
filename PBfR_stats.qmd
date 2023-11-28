@@ -54,17 +54,17 @@ The data are not shared because they contain personal data (e.g., names, email a
 
 We first have to read and clean the data to get usable data frames. We don't want to include people who were involved in the creation of the course or who provided feedback on it; we only need the actual users; people who enrolled after the launch of the course with the intention to actually learn something new!
 
-```{r load-packages}
+```{r}
+#| label: load-packages
 #| code-summary: "See code to load packages"
 library(tidyverse)
 library(data.table)
 ```
 
-```{r styling}
+```{r}
+#| label: styling
 #| code-summary: "See code to style graphs"
 
-# Styling copied from the Data Privacy Survey plots
-# R color brewers palettes: http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
 # UU colors: https://www.uu.nl/en/organisation/corporate-identity/brand-policy/colour
 UU_pallette <- c(
   "#FFE6AB", # Lighter yellow
@@ -99,8 +99,10 @@ styling <- list(
 )
 ```
 
-```{r read-all-data}
+```{r}
+#| label: read-all-data
 #| code-summary: "See code to read all data files"
+
 # List all the files in the raw folder including their date
 data_files <- data.frame(filename = list.files(path = "raw", pattern = ".csv"))
 data_files$filenamedates <- as.Date(str_extract(pattern = "[0-9]+[0-9]+[0-9]+", 
@@ -137,7 +139,8 @@ progress_list <- readfiles(progress_files)
 quiz_list <- readfiles(quiz_files)
 ```
 
-```{r select-actual-users}
+```{r}
+#| label: select-actual-users
 #| code-summary: "See code to select only relevant participants"
 
 # Filter the most recent dataframe to only contain the correct participants
@@ -164,7 +167,8 @@ quiz_list_filtered <- filterlist(quiz_list)
 
 ## Number of participants
 
-```{r n-participants}
+```{r}
+#| label: n-participants
 #| code-summary: "See code to calculate the number of participants"
 
 # Initialize empty dataframe to be filled in the for-loop
@@ -197,7 +201,8 @@ As of `r nr_participants$date[length(nr_participants$date)]`, there are `r nr_pa
 
 In the below bar chart, you can see the development of the number of participants in the course over time.
 
-```{r plot-participants}
+```{r}
+#| label: plot-participants
 #| code-summary: "See code to plot the participants over time "
 
 # From wide to long
@@ -224,7 +229,6 @@ nr_participants_long <- nr_participants_long %>%
 # Adjust y-axis limits
 y_max <- max(nr_participants_long$midpoint) + max(nr_participants_long$value) / 2
 
-
 # Adjust label positioning
 ggplot(nr_participants_long, aes(x = date, y = value, fill = name)) +
   geom_bar(stat = "identity") +
@@ -247,7 +251,8 @@ ggplot(nr_participants_long, aes(x = date, y = value, fill = name)) +
 
 Below you can see the average progress per group of participants for each block in the course as of `r names(progress_list_filtered[length(progress_list_filtered)])`.
 
-```{r plot-latest-progress}
+```{r}
+#| label: plot-latest-progress
 #| code-summary: "See code to plot latest progress per chapter and group"
 
 # Copy progress object to make further edits/cleaning
@@ -360,7 +365,8 @@ latest_progress_long %>%
 
 Below, you can see the average progress over time. On July 11th, the ULearning platform got an update. Therefore, from then onwards, the progress for every user was set to 0 again, hence the drop in progress in July 2023.
 
-```{r progress-over-time}
+```{r}
+#| label: progress-over-time
 #| code-summary: "See code to plot average progress over time"
 
 # Create an empty list to store the results
@@ -410,7 +416,8 @@ avg_progress_pp_flat %>%
 
 ## Quiz results
 
-```{r clean-quiz-data}
+```{r}
+#| clean-quiz-data
 #| code-summary: "See code to clean the quiz data"
 
 # Copy progress object to make further edits/cleaning
@@ -456,7 +463,8 @@ colnames(quiz_list_cleaned[[dataframe]]) <- gsub("^Q\\.\\.([0-9]+)\\.\\..*",
 Below you can see the average final score on the quiz for the latest quiz 
 results.
 
-```{r quiz-latest-grade}
+```{r}
+#| label: quiz-latest-grade
 #| code-summary: "See code to plot the latest final grade per group"
 
 # Select the latest quiz file
@@ -496,7 +504,8 @@ latest_quiz_df %>%
 Below is a table with the average scores (in %) per question in the most recent 
 quiz data.
 
-```{r quiz-questionscores}
+```{r}
+#| label: quiz-questionscores
 #| code-summary: "See code to create the table"
 
 # From the latest quiz results, put in a table the average scores (%) per quiz question
@@ -532,7 +541,8 @@ ggplot(quiz_data_long, aes(x = Question, y = Score)) +
 
 Below you can find the number of attempts (either in Progress or Finished)
 
-```{r quiz-over-time}
+```{r}
+#| label: quiz-over-time
 #| code-summary: "See code to plot the number of attempts over time"
 # Create an empty dataframe to store the combined results
 quizovertime <- data.frame(group = character(),
