@@ -103,8 +103,10 @@ styling <- list(
 #| label: read-all-data
 #| code-summary: "See code to read all data files"
 
+# REWRITE: ONLY READ LATEST
+
 # List all the files in the raw folder including their date
-data_files <- data.frame(filename = list.files(path = "raw", pattern = ".csv"))
+data_files <- data.frame(filename = list.files(path = "data/raw", pattern = ".csv"))
 data_files$filenamedates <- as.Date(str_extract(pattern = "[0-9]+[0-9]+[0-9]+", 
                                                 string = data_files$filename),
                                     format = "%Y%m%d")
@@ -126,7 +128,7 @@ readfiles <- function(filesvar){
   dataset <- list()
   dataset <- lapply(filesvar$filename, 
                     function(file){
-                      read.csv(paste0("raw/", file), header = TRUE)
+                      read.csv(paste0("data/raw/", file), header = TRUE)
                       }
                     )
   names(dataset) <- filesvar$filenamedates
@@ -195,6 +197,10 @@ for(dataframe in 1:vectorlength){
   # Nr of other people = total - UU - UU_students
   nr_participants$other[dataframe] <- nr_participants$total[dataframe] - nr_participants$uu[dataframe] - nr_participants$uu_students[dataframe]
 }
+
+# Save the nr_participants object to a csv file
+write_csv(nr_participants, "data/processed/nr_participants.csv")
+
 ```
 
 As of `r nr_participants$date[length(nr_participants$date)]`, there are `r nr_participants$total[length(nr_participants$date)]` participants enrolled in the course. `r nr_participants$uu[length(nr_participants$date)]` of them are enrolled with their "@uu.nl" email address, and `r nr_participants$uu_students[length(nr_participants$date)]` of them with the "@students.uu.nl" email address. `r nr_participants$other[length(nr_participants$date)]` participants are either from an external institution or have used a personal email address to enroll in the course.
@@ -388,13 +394,16 @@ for(dataframe in 1:length(progress_list_cleaned)){
 
 avg_progress_pp_flat <- bind_rows(avg_progress_pp)
 
-# Number of people underlying each average: 
-# avg_progress_pp_flat %>% group_by(group, date) %>% summarise(count = n())
+avg_progress_cats <- avg_progress_pp_flat %>%
+  group_by(group, date) %>%
+  summarise(n = n(), # nr of people underlying each average
+            avg_progress = mean(progress) * 100)
+
+# Save the file
+write.csv(avg_progress_cats, "data/processed/avg_progress_cats.csv")
 
 # Line and scatter combined
-avg_progress_pp_flat %>%
-  group_by(group, date) %>%
-  summarise(avg_progress = mean(progress) * 100) %>%
+avg_progress_cats %>%
   ggplot(aes(x = date, 
              y = avg_progress, 
              color = group)) +
@@ -417,7 +426,7 @@ avg_progress_pp_flat %>%
 ## Quiz results
 
 ```{r}
-#| clean-quiz-data
+#| label: clean-quiz-data
 #| code-summary: "See code to clean the quiz data"
 
 # Copy progress object to make further edits/cleaning
@@ -460,6 +469,67 @@ colnames(quiz_list_cleaned[[dataframe]]) <- gsub("^Q\\.\\.([0-9]+)\\.\\..*",
 }
 ```
 
+```{r}
+#| label: save-summarized-quiz-data
+#| code-summary: See code to summarize the quiz data
+
+quizscores <- data.frame()
+total_quiz_scores <- data.frame()
+
+for(date in names(quiz_list_cleaned)){
+  # Summarize the quiz dataframe
+  df <- quiz_list_cleaned[[date]] %>%
+    
+    # Make sure group is a factor variable
+    mutate(group = factor(group, levels = c("uu",
+                                            "uu_students",
+                                            "other"))) %>%
+    
+    # Group by UU / Students / Other / All for summary calculations
+    group_by(group) %>%
+    
+    # For every group, save the sample size, total grade, and mean grade per question
+    summarise(
+      n = n(),
+      total_grade = mean(Grade, na.rm = TRUE),
+      across(starts_with("Q"), 
+             ~ mean(., na.rm = TRUE)/0.6*100)
+    ) %>%
+    
+    # Also save the date in the dataframe
+    mutate(date = as.Date(date, "%Y-%m-%d")) %>%
+    
+    # Rearrange the columns for easier readability
+    select(date, group, n, total_grade, starts_with("Q"))
+
+  # Add the scores to the final dataframe quizscores
+  quizscores <- rbind(quizscores, df)
+  
+  
+  # Do the same, but not split per group
+  df2 <- quiz_list_cleaned[[date]] %>%
+    ungroup() %>%
+    
+    # Save the sample size, total grade, and mean grade per question
+    summarise(
+      n = sum(!is.na(Grade)),
+      total_grade = mean(Grade, na.rm = TRUE),
+      across(starts_with("Q"), ~mean(., na.rm = TRUE) / 0.6 * 100)
+    ) %>%
+    
+    # Also save the date in the dataframe
+    mutate(date = as.Date(date, "%Y-%m-%d")) %>%
+    
+    # Rearrange the columns for easier readability
+    select(date, n, total_grade, starts_with("Q"))
+  
+  total_quiz_scores <- rbind(total_quiz_scores, df2)
+}
+
+write.csv(quizscores, "data/processed/quizscores.csv")
+write.csv(total_quiz_scores, "data/processed/total_quiz_scores.csv")
+```
+
 Below you can see the average final score on the quiz for the latest quiz 
 results.
 
@@ -467,35 +537,25 @@ results.
 #| label: quiz-latest-grade
 #| code-summary: "See code to plot the latest final grade per group"
 
-# Select the latest quiz file
-latest_quiz_df <- quiz_list_cleaned[[length(quiz_list_cleaned)]]
-
-latest_quiz_df_with_counts <- latest_quiz_df %>%
-  mutate(group = factor(group, levels = c("uu",
-                                          "uu_students",
-                                          "other"))) %>%
-  group_by(group) %>%
-  summarise(n = n()) %>%
+latest_quiz_df <- quizscores %>%
+  # Select latest quiz from quizscores
+  filter(date == max(date)) %>%
+  
+  # Create a label for the graph
   mutate(label = case_when(
     group == "uu" ~ paste0("UU staff (n = ", n, ")"),
     group == "uu_students" ~ paste0("UU students (n = ", n, ")"),
     group == "other" ~ paste0("Others (n = ", n, ")")
-  )) %>%
-  ungroup()
-
-mean_grades <- latest_quiz_df %>%
-  group_by(group) %>%
-  summarise(mean_grade = round(mean(Grade, na.rm = TRUE),1))
+  )) 
 
 latest_quiz_df %>%
-  ggplot(aes(x = group, y = Grade, fill = group)) +
+  ggplot(aes(x = group, y = total_grade, fill = group)) +
   stat_summary(geom = "bar", fun = "mean", position = "dodge", na.rm = TRUE) +
   labs(x = "Group", y = "Average grade", 
        title = "Average grade per group") +
-  geom_text(data = mean_grades, aes(x = group, y = mean_grade,
-                                    label = sprintf("%.2f", mean_grade)),
+  geom_text(aes(label = round(total_grade,2)),
             position = position_dodge(width = 0.9), vjust = -0.5, size = 3.5) +
-  scale_x_discrete(labels = latest_quiz_df_with_counts$label) +
+  scale_x_discrete(labels = latest_quiz_df$label) +
   scale_fill_manual(values = UU_pallette) +
   styling +
   theme(legend.position = "none")  # Remove the legend
@@ -506,36 +566,26 @@ quiz data.
 
 ```{r}
 #| label: quiz-questionscores
-#| code-summary: "See code to create the table"
+#| code-summary: "See code to create the plot per question"
 
-# From the latest quiz results, put in a table the average scores (%) per quiz question
+latestquiz_total_long <- total_quiz_scores %>%
+  # Select latest quiz from quizscores
+  filter(date == max(date)) %>%
+  select(starts_with("Q")) %>%
+  gather(key = "Question", value = "Score")
 
-# Select the question columns
-grade_columns <- grep("^Q", names(latest_quiz_df), value = TRUE)
+# Convert "Question" to a factor with the correct order
+latestquiz_total_long$Question <- factor(latestquiz_total_long$Question, 
+                                  levels = paste0("Q", 1:16))
 
-# Create the table
-quiz_data_long <- latest_quiz_df %>%
-  ungroup() %>%
-  summarise(across(all_of(grade_columns), 
-                   ~ round(mean(as.numeric(.), 
-                                na.rm = TRUE)/0.6*100, 
-                           0))) %>%
-  pivot_longer(cols = starts_with("Q"), 
-               names_to = "Question", 
-               values_to = "Score") %>%
-  mutate(Question = factor(Question, 
-                           levels = c("Q1", "Q2", "Q3", "Q4", 
-                                      "Q5", "Q6", "Q7", "Q8", 
-                                      "Q9", "Q10", "Q11", "Q12", 
-                                      "Q13", "Q14", "Q15", "Q16")))
-
-# Create bar plot
-ggplot(quiz_data_long, aes(x = Question, y = Score)) +
+# Plot
+ggplot(latestquiz_total_long, aes(x = Question, 
+                            y = Score)) +
   geom_bar(stat = "identity", fill = uucol) +
   labs(x = "Question", 
        y = "Average Score", 
        title = "Average Score per Quiz Question (%)") +
-  geom_text(aes(label = Score), vjust = -0.5, size = 3.5) +
+  geom_text(aes(label = sprintf("%.0f", Score)), vjust = -0.5, size = 3.5) +
   styling
 ```
 
@@ -544,37 +594,15 @@ Below you can find the number of attempts (either in Progress or Finished)
 ```{r}
 #| label: quiz-over-time
 #| code-summary: "See code to plot the number of attempts over time"
-# Create an empty dataframe to store the combined results
-quizovertime <- data.frame(group = character(),
-                         attempts = integer(),
-                         date = Date(),
-                         stringsAsFactors = FALSE)
 
-# Iterate over each dataframe in the list
-for (date in names(quiz_list_cleaned)) {
-  df <- quiz_list_cleaned[[date]]  # Extract the dataframe
-  
-  # Extract information from the current dataframe
-  groups <- c("uu", "uu_students", "other")
-  num_attempts <- c(
-    length(df$Last.name[df$group=="uu"]),
-    length(df$Last.name[df$group=="uu_students"]),
-    length(df$Last.name[df$group=="other"]))
-  date <- as.Date(rep(date, 3))
-  
-  # Create a temporary dataframe for the current group
-  temp_df <- data.frame(group = factor(groups,
-                                       levels = c("uu", "uu_students", "other")),
-                        attempts = num_attempts,
-                        date = date)
-  
-  # Append the temporary dataframe to the result dataframe
-  quizovertime <- rbind(quizovertime, temp_df)
-}
+quizovertime2 <- quizscores %>%
+  select(date,
+         group,
+         n)
 
 # Line plot
-quizovertime %>%
-  ggplot(aes(x = date, y = attempts, color = group)) +
+quizovertime2 %>%
+  ggplot(aes(x = date, y = n, color = group)) +
   geom_line(linewidth = 1) +
   geom_point(alpha = 0.7) +
   labs(x = "Date", 
@@ -587,3 +615,4 @@ quizovertime %>%
                                 "other" = "Others")) +  # Set the legend labels
   styling
 ```
+
