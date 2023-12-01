@@ -557,12 +557,12 @@ quizscores_attempts %>%
 #| code-summary: Code to write new objects to the processed folder
 
 # number of participants
-#write.csv(nr_participants_all, "data/processed/nr_participants.csv")
+write.csv(nr_participants_all, "data/processed/nr_participants.csv")
 
 # progress
-#write.csv(avg_progress_cats_2, "data/processed/avg_progress_cats.csv")
+write.csv(avg_progress_cats_2, "data/processed/avg_progress_cats.csv")
 
 # quiz
-#write.csv(quizscores_new, "data/processed/quizscores.csv")
-#write.csv(total_quiz_scores_new, "data/processed/total_quiz_scores.csv")
+write.csv(quizscores_new, "data/processed/quizscores.csv")
+write.csv(total_quiz_scores_new, "data/processed/total_quiz_scores.csv")
 ```
