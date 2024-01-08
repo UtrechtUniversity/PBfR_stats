@@ -4,9 +4,8 @@ In this report, you'll find some data on the usage of the online training "Priva
 
 A description of and a registration link to the online module can be found on the [RDM Support website](https://www.uu.nl/en/research/research-data-management/walk-in-hours-workshops/privacy-basics-online-training). The module is embedded within the Utrecht University Moodle platform, "ULearning", but the raw module materials are also available [online via Zenodo](https://doi.org/10.5281/zenodo.7930571).
 
-::: {.callout-note}
-This report is primarily meant for internal monitoring purposes at the moment.
-We may adjust this report in a later stage, or move it to another web address!
+::: callout-note
+This report is primarily meant for internal monitoring purposes at the moment. We may adjust this report in a later stage, or move it to another web address!
 :::
 
 ## Getting, reading and cleaning the data
@@ -28,13 +27,13 @@ To obtain the data for this report from the ULearning platform, the following st
 
 ##### 2. Progress report
 
-1.  From course main page, go to Reports -> Activity completion
+1.  From course main page, go to Reports > Activity completion
 2.  Download the file to the spreadsheet format (UTF-8 .csv)
 3.  Save the file in the `raw` folder. Add the date of downloading in the downloaded csv file "YYYYMMDD_progress.pbfr.csv"
 
 ##### 3. Quiz results
 
-1.  From course main page, go to Chapter 6 | Closing -> Final Quiz
+1.  From course main page, go to "Chapter 6 | Closing" > "Final Quiz"
 2.  Click "Attempts: [##]" (The ## indicating the number of attempts)
 3.  Under What to include in the report, select:
     -   Attempts from enrolled users who have attempted the quiz
@@ -48,8 +47,7 @@ To obtain the data for this report from the ULearning platform, the following st
 7.  Download the data as Comma separated values (.csv)
 8.  Save the file in the `raw` folder as "YYYYMMDD_PBfR-Quiz.csv".
 
-The raw data are not shared because they contain personal data (e.g., names, 
-email addresses and information about participants' progress in the module).
+The raw data are not shared because they contain personal data (e.g., names, email addresses and information about participants' progress in the module).
 
 ### Reading and cleaning the data
 
@@ -472,8 +470,7 @@ quizscores_new$group <- factor(quizscores_new$group,
 total_quiz_scores_new <- bind_rows(total_quiz_scores, quiz_4_total)
 ```
 
-Below you can see the average final score on the quiz for the latest quiz 
-results.
+Below you can see the average final score on the quiz for the latest quiz results.
 
 ```{r}
 #| label: quiz-latest-grade
@@ -500,8 +497,7 @@ latest_quiz_df %>%
   theme(legend.position = "none")  # Remove the legend
 ```
 
-Below is a table with the average scores (in %) per question in the most recent 
-quiz data.
+Below is a table with the average scores (in %) per question in the most recent quiz data.
 
 ```{r}
 #| label: quiz-questionscores
@@ -552,17 +548,26 @@ quizscores_attempts %>%
                                 "other" = "Others")) +  # Set the legend labels
   styling
 ```
+
 ```{r}
 #| label: write-to-csv
 #| code-summary: Code to write new objects to the processed folder
 
 # number of participants
-write.csv(nr_participants_all, "data/processed/nr_participants.csv")
+write.csv(nr_participants_all, 
+          "data/processed/nr_participants.csv", 
+          row.names = FALSE)
 
 # progress
-write.csv(avg_progress_cats_2, "data/processed/avg_progress_cats.csv")
+write.csv(avg_progress_cats_2, 
+          "data/processed/avg_progress_cats.csv", 
+          row.names = FALSE)
 
 # quiz
-write.csv(quizscores_new, "data/processed/quizscores.csv")
-write.csv(total_quiz_scores_new, "data/processed/total_quiz_scores.csv")
+write.csv(quizscores_new, 
+          "data/processed/quizscores.csv", 
+          row.names = FALSE)
+write.csv(total_quiz_scores_new, 
+          "data/processed/total_quiz_scores.csv", 
+          row.names = FALSE)
 ```
