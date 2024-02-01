@@ -27,14 +27,14 @@ To obtain the data for this report from the ULearning platform, the following st
 
 ##### 2. Progress report
 
-1.  From course main page, go to Reports > Activity completion
+1.  From course main page, go to Reports \> Activity completion
 2.  Download the file to the spreadsheet format (UTF-8 .csv)
 3.  Save the file in the `raw` folder. Add the date of downloading in the downloaded csv file "YYYYMMDD_progress.pbfr.csv"
 
 ##### 3. Quiz results
 
-1.  From course main page, go to "Chapter 6 | Closing" > "Final Quiz"
-2.  Click "Attempts: [##]" (The ## indicating the number of attempts)
+1.  From course main page, go to "Chapter 6 \| Closing" \> "Final Quiz"
+2.  Click "Attempts: \[##\]" (The \## indicating the number of attempts)
 3.  Under What to include in the report, select:
     -   Attempts from enrolled users who have attempted the quiz
     -   Attempts that are In progress, Overdue, Finished, and Never submitted
