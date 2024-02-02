@@ -1,5 +1,9 @@
 ## About
 
+TODO: 
+- instead of UU/Student/External, take faculties as grouping variable in all graphs
+- Write to new files
+
 In this report, you'll find some data on the usage of the online training "Privacy Basics for Researchers". This online module was created by Research Data Management Support at Utrecht University (NL) to provide a researcher-friendly introduction into the General Data Protection Regulation (GDPR), with a focus on how it applies to scientific research performed at Utrecht University (UU).
 
 A description of and a registration link to the online module can be found on the [RDM Support website](https://www.uu.nl/en/research/research-data-management/walk-in-hours-workshops/privacy-basics-online-training). The module is embedded within the Utrecht University Moodle platform, "ULearning", but the raw module materials are also available [online via Zenodo](https://doi.org/10.5281/zenodo.7930571).
@@ -159,23 +163,39 @@ quiz_2 <- quiz %>% semi_join(select(participants_2,
 #| code-summary: "Code to calculate the number of participants"
 
 # Calculate nr of participants of most recent download
-new_row <- list(date = date,
-                total = dim(participants_2)[1],
-                uu = sum(grepl("@uu.nl$", 
-                               participants_2$Email.address)),
-                uu_students = sum(grepl("@students.uu.nl$",
-                                        participants_2$Email.address)),
-                
-                # other = total - uu - students
-                other = dim(participants_2)[1] - 
-                  sum(grepl("@uu.nl$", participants_2$Email.address)) -
-                  sum(grepl("@students.uu.nl$", participants_2$Email.address)))
+new_row <- data.frame(date = date,
+                      total = dim(participants_2)[1],
+                      uu = sum(grepl("@uu.nl$", 
+                                     participants_2$Email.address)),
+                      uu_students = sum(grepl("@students.uu.nl$",
+                                              participants_2$Email.address)),
+                      
+                      # other = total - uu - students
+                      other = dim(participants_2)[1] - 
+                        sum(grepl("@uu.nl$", participants_2$Email.address)) -
+                        sum(grepl("@students.uu.nl$", participants_2$Email.address)),
+                      
+                      # Faculties
+                      DGK = sum(participants_2$Groups=="DGK"),
+                      REBO = sum(participants_2$Groups=="REBO"),
+                      FSW = sum(participants_2$Groups=="FSW"),
+                      GEO = sum(participants_2$Groups=="GEO"),
+                      GW = sum(participants_2$Groups=="GW"),
+                      BETA = sum(participants_2$Groups=="BETA"),
+                      MED = sum(participants_2$Groups=="MED"),
+                      UB = sum(participants_2$Groups=="UB"),
+                      UBD = sum(participants_2$Groups=="UBD"),
+                      Student = sum(participants_2$Groups=="Student"),
+                      External = sum(participants_2$Groups=="External")
+)
 
 # Convert date to date type
 nr_participants$date <- as.Date(nr_participants$date, "%Y-%m-%d")
 
 # Paste new row below the existing data
-nr_participants_all <- rbind(nr_participants, new_row)
+nr_participants_all <- rbindlist(list(nr_participants, new_row2), 
+                                     use.names = TRUE,
+                                     fill = TRUE)
 ```
 
 As of `r date`, there are `r new_row$total` participants enrolled in the course. `r new_row$uu` of them are enrolled with their "@uu.nl" email address, and `r new_row$uu_students` of them with the "@students.uu.nl" email address. `r new_row$other` participants are either from an external institution or have used a personal email address to enroll in the course.
@@ -184,7 +204,7 @@ In the below bar chart, you can see the development of the number of participant
 
 ```{r}
 #| label: plot-participants
-#| code-summary: "Code to plot the participants over time "
+#| code-summary: "Code to plot the participants over time"
 
 # From wide to long
 nr_participants_long <- pivot_longer(data = nr_participants_all, 
@@ -223,6 +243,18 @@ ggplot(nr_participants_long, aes(x = date, y = value, fill = name)) +
                                "other" = "Others"),
                     values = UU_pallette) +
   styling
+```
+
+## Participation per faculty
+
+On `r date`, this was the division of faculties in the module (total: `r new_row$total`):
+
+```{r}
+#| label: faculty-table
+#| code-summary: "Code to create a table of participation per faculty"
+
+counts <- participants_2 %>% count(Groups)
+
 ```
 
 ## Participants' progress
