@@ -16,15 +16,16 @@ To obtain the data for this report from the ULearning platform, the following st
 
 ##### 0. Add Groups to participants
 
-1. From course main page, go to Participants.
-2. Set the following selection criteria: Match Any - *Groups* - *No Groups*
-3. Click "Apply filters"
-4. Assign the participants that appear (if any) to the correct group, by clicking the pencil icon in the Groups column for that participant:
-  - `@students.uu.nl` should get "Student"
-  - `@umcutrecht.nl` should get "MED"
-  - `@uu.nl` email addresses: go to the [Employees page](https://intranet.uu.nl/en/search-a-colleague?search_type=FindByName&search_value) on intranet and search for their name or email address. Use the abbreviation of the faculty in which they are listed on the intranet.
-  - Other email addresses get "External"
-  
+1.  From course main page, go to Participants.
+2.  Set the following selection criteria: Match Any - *Groups* - *No Groups*
+3.  Click "Apply filters"
+4.  Assign the participants that appear (if any) to the correct group, by clicking the pencil icon in the Groups column for that participant:
+
+-   `@students.uu.nl` should get "Student"
+-   `@umcutrecht.nl` should get "MED"
+-   `@uu.nl` email addresses: go to the [Employees page](https://intranet.uu.nl/en/search-a-colleague?search_type=FindByName&search_value) on intranet and search for their name or email address. Use the abbreviation of the faculty in which they are listed on the intranet.
+-   Other email addresses get "External"
+
 ##### 1. List of enrolled participants
 
 1.  From course main page, go to Participants.
@@ -376,7 +377,8 @@ latest_progress_long <- progress_3 %>%
                                     startsWith(block, "Making.Personal.Data.FAIR"),
                                   "Chapter 5", ifelse(
                                     startsWith(block, "Final.Quiz") |
-                                      startsWith(block, "Evaluate.this.course"),
+                                      startsWith(block, "Evaluate.this.course") | 
+                                            startsWith(block, "Available.Support.at.Utrecht.University"),
                                     "Chapter 6", "Not assigned"
                                   )
                                 )
