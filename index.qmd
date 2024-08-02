@@ -1,0 +1,704 @@
+## About
+
+In this report, you'll find some data on the usage of the online training "Privacy Basics for Researchers". This online module was created by Research Data Management Support at Utrecht University (NL) to provide a researcher-friendly introduction into the General Data Protection Regulation (GDPR), with a focus on how it applies to scientific research performed at Utrecht University (UU).
+
+A description of and a registration link to the online module can be found on the [RDM Support website](https://www.uu.nl/en/research/research-data-management/walk-in-hours-workshops/privacy-basics-online-training). The module is embedded within the Utrecht University Moodle platform, "ULearning", but the raw module materials are also available [online via Zenodo](https://doi.org/10.5281/zenodo.7930571).
+
+::: callout-note
+This report is primarily meant for internal monitoring purposes at the moment. We may adjust this report in a later stage, or move it to another web address!
+:::
+
+## Getting, reading and cleaning the data
+
+### Downloading the data
+
+To obtain the data for this report from the ULearning platform, the following steps should be followed by a teacher/administrator in the ULearning platform:
+
+##### 0. Add Groups to participants
+
+1.  From course main page, go to Participants.
+2.  Set the following selection criteria: Match Any - *Groups* - *No Groups*
+3.  Click "Apply filters"
+4.  Assign the participants that appear (if any) to the correct group, by clicking the pencil icon in the Groups column for that participant:
+
+-   `@students.uu.nl` should get "Student"
+-   `@umcutrecht.nl` should get "MED"
+-   `@uu.nl` email addresses: go to the [Employees page](https://intranet.uu.nl/en/search-a-colleague?search_type=FindByName&search_value) on intranet and search for their name or email address. Use the abbreviation of the faculty in which they are listed on the intranet.
+-   Other email addresses get "External"
+
+##### 1. List of enrolled participants
+
+1.  From course main page, go to Participants.
+2.  Set the following selection criteria: Match *All* of the following
+    -   Match ANY Roles: Student, Guest, Authenticated user, Authenticated user on site home AND
+    -   Match None Groups: Red
+3.  Click "Apply filters"
+4.  Select all users
+5.  Under "With selected users...", select "Comma-separated values (.csv)"
+6.  Save the file in the `raw` folder. Add the date of downloading in the downloaded csv file "YYYYMMDD_courseid_838_participants.csv"
+
+##### 2. Progress report
+
+1.  From course main page, go to Reports \> Activity completion
+2.  Download the file to the spreadsheet format (UTF-8 .csv)
+3.  Save the file in the `raw` folder. Add the date of downloading in the downloaded csv file "YYYYMMDD_progress.pbfr.csv"
+
+##### 3. Quiz results
+
+1.  From course main page, go to "Chapter 6 \| Closing" \> "Final Quiz"
+2.  Click "Attempts: \[##\]" (The \## indicating the number of attempts)
+3.  Under What to include in the report, select:
+    -   Attempts from enrolled users who have attempted the quiz
+    -   Attempts that are In progress, Overdue, Finished, and Never submitted
+    -   Check Show at most one finished attempt per user (Highest grade)
+4.  Under Display options:
+    -   Make sure Page size is larger than the amount of attempts.
+    -   Marks for each question: Yes
+5.  Click Show report.
+6.  Select all participants using the checkbox above the first name in the list.
+7.  Download the data as Comma separated values (.csv)
+8.  Save the file in the `raw` folder as "YYYYMMDD_PBfR-Quiz.csv".
+
+The raw data are not shared because they contain personal data (e.g., names, email addresses and information about participants' progress in the module).
+
+### Reading and cleaning the data
+
+We first have to read and clean the data to get usable data frames. We don't want to include people who were involved in the creation of the course or who provided feedback on it; we only need the actual users; people who enrolled after the launch of the course with the intention to actually learn something new!
+
+```{r}
+#| label: load-packages
+#| code-summary: "Code to load dependencies"
+library(tidyverse)
+library(data.table)
+library(kableExtra)
+```
+
+```{r}
+#| label: styling
+#| code-summary: "Code to style graphs"
+
+# UU colors: https://www.uu.nl/en/organisation/corporate-identity/brand-policy/colour
+UU_pallette <- c(
+  "#FFE6AB", # Lighter yellow
+  "#FFCD00", # UU yellow
+  "#F3965E", # Orange
+  "#C00A35", # Red
+  "#AA1555", # Bordeaux-red
+  "#6E3B23", # Brown
+  "#24A793", # Green
+  "#5287C6", # Blue
+  "#001240", # Dark blue
+  "#5B2182", # Purple
+  "#000000" # Black
+  )
+
+uucol <- "#FFCD00"
+
+styling <- list(
+  theme_classic(),
+  theme(legend.text = element_text(size = 10),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_text(size = 11),
+        axis.text.y = element_text(size = 11),
+        axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        plot.background=element_blank())
+)
+```
+
+```{r}
+#| label: read-data
+#| code-summary: "Code to read data"
+
+# 1. Read existing processed files
+avg_progress_cats <- read.csv("data/processed/avg_progress_cats.csv")
+nr_participants <- read.csv("data/processed/nr_participants.csv")
+quizscores <- read.csv("data/processed/quizscores.csv")
+total_quiz_scores <- read.csv("data/processed/total_quiz_scores.csv")
+
+# 2. Read latest raw files
+# See which files are in the raw folder
+data_files <- data.frame(filename = list.files(path = "data/raw", pattern = ".csv"))
+
+# Get the dates from the file names
+data_files$filenamedates <- as.Date(str_extract(pattern = "[0-9]+[0-9]+[0-9]+", 
+                                                string = data_files$filename),
+                                    format = "%Y%m%d")
+
+# Sort by date using data.table::setorder (descending = most recent files first)
+setorder(data_files, filenamedates, na.last = FALSE)
+
+# Read the 3 files from the most recent date
+participants <- read.csv(paste0("data/raw/",
+                                data_files$filename[
+                                  str_detect(data_files$filename[1:3],
+                                             "courseid_838_participants.csv")
+                                  ]))
+progress <- read.csv(paste0("data/raw/",
+                            data_files$filename[
+                              str_detect(data_files$filename[1:3],
+                                         "progress.pbfr.csv")
+                            ]))
+quiz <- read.csv(paste0("data/raw/",
+                        data_files$filename[
+                          str_detect(data_files$filename[1:3],
+                                     "PBfR-Quiz.csv")
+                        ]))
+
+# Save the date for the coming calculations
+date <- as.Date(data_files$filenamedates[1], "%Y-%m-%d")
+```
+
+```{r}
+#| label: select-actual-users
+#| code-summary: "Code to select only relevant participants"
+
+# Filter participants to only contain the correct participants
+participants_2 <- participants %>% filter(!(Groups == "Red" & !is.na(Groups)))
+
+# Filter progress and quiz dataframes based on participants
+progress_2 <- progress %>% semi_join(select(participants_2,
+                                          Email.address), 
+                                     by = join_by(Email.address)) %>%
+  # Also add Groups
+  left_join(select(participants_2, Groups, Email.address))
+
+quiz_2 <- quiz %>% semi_join(select(participants_2,
+                                          Email.address),
+                             by = join_by(Email.address)) %>%
+  # Also add Groups
+  left_join(select(participants_2, Groups, Email.address))
+```
+
+## Number of participants
+
+```{r}
+#| label: n-participants
+#| code-summary: "Code to calculate the number of participants"
+
+# Calculate nr of participants of most recent download
+new_row <- data.frame(date = date,
+                      total = dim(participants_2)[1],
+                      uu = sum(grepl("@uu.nl$", 
+                                     participants_2$Email.address)),
+                      uu_students = sum(grepl("@students.uu.nl$",
+                                              participants_2$Email.address)),
+                      
+                      # other = total - uu - students
+                      other = dim(participants_2)[1] - 
+                        sum(grepl("@uu.nl$", participants_2$Email.address)) -
+                        sum(grepl("@students.uu.nl$", participants_2$Email.address)),
+                      
+                      # Faculties
+                      DGK = sum(participants_2$Groups=="DGK"),
+                      REBO = sum(participants_2$Groups=="REBO"),
+                      FSW = sum(participants_2$Groups=="FSW"),
+                      GEO = sum(participants_2$Groups=="GEO"),
+                      GW = sum(participants_2$Groups=="GW"),
+                      BETA = sum(participants_2$Groups=="BETA"),
+                      MED = sum(participants_2$Groups=="MED"),
+                      UB = sum(participants_2$Groups=="UB"),
+                      UBD = sum(participants_2$Groups=="UBD"),
+                      Student = sum(participants_2$Groups=="Student"),
+                      External = sum(participants_2$Groups=="External")
+)
+
+# Convert date to date type
+nr_participants$date <- as.Date(nr_participants$date, "%Y-%m-%d")
+
+# Paste new row below the existing data
+nr_participants_all <- rbindlist(list(nr_participants, new_row), 
+                                     use.names = TRUE,
+                                     fill = TRUE)
+```
+
+As of `r date`, there are `r new_row$total` participants enrolled in the course. `r new_row$uu` of them are enrolled with their "@uu.nl" email address, and `r new_row$uu_students` of them with the "@students.uu.nl" email address. `r new_row$other` participants are either from an external institution or have used a personal email address to enroll in the course.
+
+In the below bar chart, you can see the development of the number of participants in the course over time.
+
+```{r}
+#| label: plot-participants
+#| code-summary: "Code to plot the participants over time"
+
+# From wide to long
+nr_participants_long <- pivot_longer(data = nr_participants_all, 
+                                    cols = c(uu, uu_students, other)
+                                    #names_to = "variable",
+                                    #values_to = "value"
+                                    )
+
+# Set the order of the variable levels
+nr_participants_long$name <- factor(nr_participants_long$name, levels = c("uu", "uu_students", "other"))
+
+# Create a stacked bar plot
+# Calculate midpoints for label positioning
+nr_participants_long <- nr_participants_long %>%
+  group_by(date) %>%
+  arrange(desc(name)) %>%
+  mutate(midpoint = cumsum(value) - 0.5 * value,
+         prev_height = lag(cumsum(value), default = 0))
+
+# Adjust y-axis limits
+y_max <- max(nr_participants_long$midpoint) + max(nr_participants_long$value) / 2
+
+# Adjust label positioning
+ggplot(nr_participants_long, aes(x = date, y = value, fill = name)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = ifelse(value > 0, value, ""),
+                y = prev_height + value / 2, group = name),
+            vjust = 0.5, color = "black", size = 3.5) +
+  ylim(0, y_max) +  # Set y-axis limits
+  labs(title = "Course participants over time",
+       x = "Date", y = "Number of participants",
+       fill = "Type of participant") +
+  scale_fill_manual(name = "Group", 
+                    labels = c("uu" = "UU staff", 
+                               "uu_students" = "UU students", 
+                               "other" = "Others"),
+                    values = UU_pallette) +
+  styling
+```
+
+## Participation per faculty
+
+On `r date`, this was the division of faculties in the module (total: `r new_row$total`):
+
+```{r}
+#| label: faculty-table
+#| code-summary: "Code to create a table of participation per faculty"
+
+# Select the faculties and total values per date
+nrs_faculties <- nr_participants_all %>% 
+  select(date, DGK:External, total) %>% 
+  filter(!is.na(DGK))
+
+# make a long dataframe
+nrs_faculties_long <- nrs_faculties %>%
+  pivot_longer(cols = -date, 
+               names_to = "Faculty", 
+               values_to = "Participants") %>%
+  mutate(date = as.character(date))
+
+# make it wide again so that the df is in the right format for the table
+nrs_faculties_wide <- nrs_faculties_long %>%
+  pivot_wider(names_from = date, 
+              values_from = Participants)
+
+# Create the table with kableExtra
+kable(nrs_faculties_wide, format = "html", output = FALSE, 
+              caption = "<b>Participants per faculty</b>",
+              table.attr='cellpadding="3", cellspacing="3"') %>%
+    kable_styling(bootstrap_options = c("striped", 
+                                        "hover", 
+                                        "condensed", 
+                                        "responsive"),
+                  fixed_thead = T) %>%
+  # Highligh the last row (total) in yellow and bold
+  # Source: https://haozhu233.github.io/kableExtra/awesome_table_in_html.html
+    row_spec(length(nrs_faculties_wide$Faculty), 
+             bold = T, color = "black", background = uucol)
+
+```
+
+## Participants' progress
+
+Below you can see the average progress per group of participants for each block in the course as of `r date`.
+
+```{r}
+#| label: plot-latest-progress
+#| code-summary: "Code to plot latest progress per chapter and group"
+
+progress_3 <- progress_2 %>%
+  # Delete columns we won't use
+  select(-starts_with("X")) %>%
+  # Turn character completion into numeric 0 or 1
+  mutate_at(vars(-Email.address, -Groups), 
+            ~ifelse(. == "Completed", 1, 0)) %>%
+  # Turn Groups variable into a factor
+  mutate(Groups = factor(Groups,
+                         levels = c("DGK", "REBO", "FSW", "GEO", "GW", 
+                                    "BETA", "MED", "UB", "UBD",
+                                    "Student", "External")),
+         #Create a factor variable for alternative group membership (UU, student or other)
+         group = as.factor(ifelse(grepl("@uu.nl$",
+                                        Email.address),
+                                  "uu",
+                                  ifelse(grepl("@students.uu.nl$",
+                                               Email.address),
+                                         "uu_students",
+                                         "other"))))
+
+# Set order of the factor levels
+progress_3$group <- factor(progress_3$group,
+                           levels = c("uu", "uu_students", "other"))
+
+# Group blocks into sections for easier visualization
+latest_progress_long <- progress_3 %>%
+  pivot_longer(cols = -c(Email.address, Groups, group), 
+               names_to = "block", 
+               values_to = "completion") %>%
+  mutate(chapter = ifelse(startsWith(block, "Welcome") | 
+                            startsWith(block, "Introduction.to.Personal.Data.under.the.GDPR") | 
+                            startsWith(block, "GDPR") | 
+                            startsWith(block, "What.is.Personal.Data") | 
+                            startsWith(block, "Special.Categories.of.Personal.Data") |
+                            startsWith(block, "Roles.in.the.GDPR"),
+                          "Chapter 1", ifelse(
+                            startsWith(block, "Introduction.to.Lawfulness") |
+                              startsWith(block, "Legal.Basis.for.Processing.Data") |
+                              startsWith(block, "Public.Interest") |
+                              startsWith(block, "Consent") |
+                              startsWith(block, "How.to.Inform.Data.Subjects") |
+                              startsWith(block, "Data.Subject.Rights"),
+                            "Chapter 2", ifelse(
+                              startsWith(block, "Introduction.to.Planning.Your.Project") |
+                                startsWith(block, "Privacy.by.Design.and.Privacy.by.Default") |
+                                startsWith(block, "Demonstrating.Compliance") |
+                                startsWith(block, "Privacy.Scan.and.DPIA") |
+                                startsWith(block, "Common.Privacy.Risks") |
+                                startsWith(block, "Reporting.a.Data.Breach"),
+                              "Chapter 3", ifelse(
+                                startsWith(block, "Introduction.to.Practical.Measures") |
+                                  startsWith(block, "Levels.of.Data.Security") |
+                                  startsWith(block, "Access.Control") |
+                                  startsWith(block, "Encryption") |
+                                  startsWith(block, "Pseudonymisation.and.Anonymisation") |
+                                  startsWith(block, "De.identification.in.Practice") |
+                                  startsWith(block, "Processing.Tools"),
+                                "Chapter 4", ifelse(
+                                  startsWith(block, "Introduction.to.Storing.and.Sharing.Personal.Data") |
+                                    startsWith(block, "Storing.Personal.Data") |
+                                    startsWith(block, "Agreements.in.Research") |
+                                    startsWith(block, "Sharing.Personal.Data") |
+                                    startsWith(block, "Making.Personal.Data.FAIR"),
+                                  "Chapter 5", ifelse(
+                                    startsWith(block, "Final.Quiz") |
+                                      startsWith(block, "Evaluate.this.course") | 
+                                            startsWith(block, "Available.Support.at.Utrecht.University"),
+                                    "Chapter 6", "Not assigned"
+                                  )
+                                )
+                              )
+                            )
+                          )
+  )
+  )
+
+
+# Count people per faculty who appear in the progress file
+n <- progress_3 %>% count(Groups)
+
+# Save completion rate per faculty
+progress_per_fac <- latest_progress_long %>%
+  group_by(Groups) %>%
+  summarise(avg_completion_rate = mean(completion) * 100) %>%
+  left_join(n) %>%
+  mutate(date = date)
+
+# Plot progress per faculty
+progress_per_fac %>%
+  mutate(graph_label = paste0(Groups, "\n (n = ", n, ")")) %>%
+  ggplot(aes(x = graph_label, 
+             y = avg_completion_rate)) +
+  geom_bar(stat = "identity", 
+           position = position_dodge(0.9),
+           fill = uucol) +
+  geom_text(aes(label = paste0(round(avg_completion_rate, 0), "%"),
+                y = avg_completion_rate + 2),  # Adjust label position as needed
+            size = 3.5, color = "black", position = position_dodge(0.9)) +
+  labs(x = "Faculty", y = "Average progress (%)", 
+       title = paste0("Average progress (%) per faculty on ", date)) +
+  styling
+```
+
+```{r}
+# Plot average progress score (per person) per chapter 
+latest_progress_long %>%
+  group_by(chapter) %>%
+  summarise(avg_completion_rate = mean(completion)) %>%
+  ungroup() %>%
+  ggplot(aes(x = chapter, 
+             y = avg_completion_rate * 100)) +
+  geom_bar(stat = "identity", 
+           position = position_dodge(0.9),
+           fill = uucol) +
+  geom_text(aes(label = paste0(round(avg_completion_rate * 100, 0), "%"),
+                y = avg_completion_rate * 100 + 2),  # Adjust label position as needed
+            size = 3.5, color = "black", position = position_dodge(0.9)) +
+  labs(x = "Chapter", y = "Average progress (%)", 
+       title = paste0("Average progress (%) on ", date)) +
+
+  styling
+```
+
+Below, you can see the average progress over time. On July 11th, the ULearning platform got an update. Therefore, from then onwards, the progress for every user was set to 0 again, hence the drop in progress in July 2023.
+
+```{r}
+#| label: progress-over-time
+#| code-summary: "Code to plot average progress over time"
+
+progress_4_fac <- progress_3 %>%
+# From wide to long format based on the Email address and group
+    pivot_longer(cols = -c(Email.address, Groups, group), 
+                 names_to = "block", 
+                 values_to = "completion") %>%
+    group_by(Email.address, Groups) %>%
+    # Calculate average completion rate per participant
+    summarise(progress = mean(completion)) %>%
+    # Put date in a new date column for all rows in the dataframe
+    mutate(date = as.Date(rep(date, n())))
+
+progress_4_group <- progress_3 %>%
+# From wide to long format based on the Email address and group
+    pivot_longer(cols = -c(Email.address, Groups, group), 
+                 names_to = "block", 
+                 values_to = "completion") %>%
+    group_by(Email.address, group) %>%
+    # Calculate average completion rate per participant
+    summarise(progress = mean(completion)) %>%
+    # Put date in a new date column for all rows in the dataframe
+    mutate(date = as.Date(rep(date, n())))
+
+# Calculate new progress per faculty dataframe
+avg_progress_new_fac <- progress_4_fac %>%
+  group_by(Groups, date) %>%
+  summarise(n = n(), # nr of people underlying each average
+            avg_progress = mean(progress) * 100)
+
+# Calculate new progress per group dataframe
+avg_progress_new_group <- progress_4_group %>%
+  group_by(group, date) %>%
+  summarise(n = n(), # nr of people underlying each average
+            avg_progress = mean(progress) * 100)
+
+# In the old dataframe, make date as actual date + make group a factor
+avg_progress_cats$date <- as.Date(avg_progress_cats$date, "%Y-%m-%d")
+avg_progress_cats$group <- factor(avg_progress_cats$group, 
+                                  levels = c("uu",
+                                             "uu_students",
+                                             "other"))
+
+# Combine old and new data in 1 dataframe
+avg_progress_cats_new <- bind_rows(avg_progress_cats,
+                                   avg_progress_new_fac,
+                                   avg_progress_new_group)
+
+# Plot average progress over time per group
+avg_progress_cats_new[!is.na(avg_progress_cats_new$group),] %>%
+  ggplot(aes(x = date, 
+             y = avg_progress, 
+             color = group)) +
+  geom_point() +
+  geom_line(linewidth = 1) +
+  labs(x = "Date", 
+       y = "Average Progress (%)", 
+       title = "Average Progress Over Time per Group") +
+  scale_color_manual(name = "Group", 
+                      labels = c("uu" = "UU staff", 
+                                 "uu_students" = "UU students", 
+                                 "other" = "Others"),
+                    values = UU_pallette) +
+  styling
+```
+
+## Quiz results
+
+```{r}
+#| label: clean-quiz-data
+#| code-summary: "Code to clean the new quiz data"
+
+quiz_3 <- quiz_2 %>%
+  # Remove duplicate rows in the dataset: take Finished if the participant has
+  # both a State = Finished and In progress.
+  group_by(Last.name) %>%
+  mutate(has_finished = any(State == "Finished")) %>%
+  filter(!((State == "In progress" | State == "In Progress") & has_finished)) %>%
+  select(-has_finished)
+
+# Make character grades numeric, and "-" into NA
+quiz_3[quiz_3 == "-"] <- NA
+quiz_3 <- quiz_3 %>%
+  mutate(Grade = as.numeric(Grade.10.0)) %>%
+  mutate_at(vars(starts_with("Q..")),
+            as.numeric)
+
+# Create a factor variable for group membership (UU, student or other)
+quiz_3$group <- as.factor(ifelse(grepl("@uu.nl$",
+                                       quiz_3$Email.address),
+                                 "uu",
+                                 ifelse(grepl("@students.uu.nl$",
+                                              quiz_3$Email.address),
+                                        "uu_students",
+                                        "other")))
+
+# Rename question columns into something human-readable
+colnames(quiz_3) <- gsub("^Q\\.\\.([0-9]+)\\.\\..*",
+                         "Q\\1",
+                         names(quiz_3))
+
+# Summarize the new quiz data per group
+quiz_4 <- quiz_3 %>%
+  # Make sure group is a factor variable
+  mutate(group = factor(group, levels = c("uu",
+                                          "uu_students",
+                                          "other"))) %>%
+  # Group by UU / Students / Other / All for summary calculations
+  group_by(group) %>%
+  # For every group, save the sample size, total grade, and mean grade per question
+  summarise(
+    n = n(),
+    total_grade = mean(Grade, na.rm = TRUE),
+    across(starts_with("Q"), 
+           ~ mean(., na.rm = TRUE)/0.6*100)
+  ) %>%
+  # Also save the date in the dataframe
+  mutate(date = as.Date(date, "%Y-%m-%d")) %>%
+  # Rearrange the columns for easier readability
+  select(date, group, n, total_grade, starts_with("Q"))
+
+# Summarize the new quiz data per faculty
+quiz_4_fac <- quiz_3 %>%
+  # Group by faculty for summary calculations
+  group_by(Groups) %>%
+  # For every faculty, save the sample size, total grade, and mean grade per question
+  summarise(
+    n = n(),
+    total_grade = mean(Grade, na.rm = TRUE),
+    across(starts_with("Q"), 
+           ~ mean(., na.rm = TRUE)/0.6*100)
+  ) %>%
+  # Also save the date in the dataframe
+  mutate(date = as.Date(date, "%Y-%m-%d")) %>%
+  # Rearrange the columns for easier readability
+  select(date, Groups, n, total_grade, starts_with("Q"))
+
+
+# Summarize new quiz data total (not per group)
+quiz_4_total <- quiz_3 %>%
+  ungroup() %>%
+  # Save the sample size, total grade, and mean grade per question
+  summarise(
+    n = sum(!is.na(Grade)),
+    total_grade = mean(Grade, na.rm = TRUE),
+    across(starts_with("Q"), ~mean(., na.rm = TRUE) / 0.6 * 100)
+  ) %>%
+  # Also save the date in the dataframe
+  mutate(date = as.Date(date, "%Y-%m-%d")) %>%
+  # Rearrange the columns for easier readability
+  select(date, n, total_grade, starts_with("Q"))
+
+# Make date variables in old dataframes date too in order to merge
+quizscores$date <- as.Date(quizscores$date, "%Y-%m-%d")
+total_quiz_scores$date <- as.Date(total_quiz_scores$date, "%Y-%m-%d")
+
+# Append new quizscores to old quiz scores
+quizscores_new <- bind_rows(quizscores, quiz_4, quiz_4_fac)
+quizscores_new$group <- factor(quizscores_new$group,
+                                  levels = c("uu",
+                                             "uu_students",
+                                             "other"))
+
+total_quiz_scores_new <- bind_rows(total_quiz_scores, quiz_4_total)
+```
+
+Below you can see the average final score on the quiz for the latest quiz results.
+
+```{r}
+#| label: quiz-latest-grade
+#| code-summary: "Code to plot the latest final grade per faculty"
+
+quiz_4_fac %>%
+  mutate(graph_label = paste0(Groups, "\n (n = ", n, ")")) %>%
+  ggplot(aes(x = graph_label, 
+             y = total_grade)) +
+  geom_bar(stat = "identity", 
+           position = position_dodge(0.9),
+           fill = uucol) +
+  geom_text(aes(label = round(total_grade, 2),
+                y = total_grade + 0.5),  # Adjust label position as needed
+            size = 3.5, color = "black", position = position_dodge(0.9)) +
+  labs(x = "Faculty", y = "Average grade", 
+       title = paste0("Average grade per faculty on ", date)) +
+  styling
+  
+```
+
+Below is a table with the average scores (in %) per question in the most recent quiz data.
+
+```{r}
+#| label: quiz-questionscores
+#| code-summary: "Code to create the plot per question"
+
+latestquiz_total_long <- quiz_4_total %>%
+  select(starts_with("Q")) %>%
+  gather(key = "Question", value = "Score")
+
+# Convert "Question" to a factor with the correct order
+latestquiz_total_long$Question <- factor(latestquiz_total_long$Question, 
+                                  levels = paste0("Q", 1:16))
+
+# Plot
+ggplot(latestquiz_total_long, aes(x = Question, 
+                            y = Score)) +
+  geom_bar(stat = "identity", fill = uucol) +
+  labs(x = "Question", 
+       y = "Average Score", 
+       title = "Average Score per Quiz Question (%)") +
+  geom_text(aes(label = sprintf("%.0f", Score)), vjust = -0.5, size = 3.5) +
+  styling
+```
+
+Below you can find the number of attempts (either in Progress or Finished)
+
+```{r}
+#| label: quiz-over-time
+#| code-summary: "Code to plot the number of attempts over time"
+
+quizscores_attempts <- quizscores_new %>%
+  select(date,
+         group,
+         n) %>%
+  filter(!is.na(group))
+
+# Line plot
+quizscores_attempts %>%
+  ggplot(aes(x = date, y = n, color = group)) +
+  geom_line(linewidth = 1) +
+  geom_point(alpha = 0.7) +
+  labs(x = "Date", 
+       y = "Number of attempts", 
+       title = "Number of quiz attempts made over time per group") +
+  scale_color_manual(values = UU_pallette,
+                     name = "Group",  # Set the legend title
+                     labels = c("uu" = "UU staff", 
+                                "uu_students" = "UU students", 
+                                "other" = "Others")) +  # Set the legend labels
+  styling
+```
+
+```{r}
+#| label: write-to-csv
+#| code-summary: Code to write new objects to the processed folder
+
+# number of participants
+write.csv(nr_participants_all, 
+          "data/processed/nr_participants.csv", 
+          row.names = FALSE)
+
+# progress
+write.csv(avg_progress_cats_new, 
+          "data/processed/avg_progress_cats.csv", 
+          row.names = FALSE)
+
+# quiz
+write.csv(quizscores_new, 
+          "data/processed/quizscores.csv", 
+          row.names = FALSE)
+write.csv(total_quiz_scores_new, 
+          "data/processed/total_quiz_scores.csv", 
+          row.names = FALSE)
+```
