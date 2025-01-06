@@ -226,8 +226,8 @@ progress_2 <- inner_join(participants_2, progress)
 quiz_2 <- inner_join(participants_2, quiz) |>
         # Filter out people who did the quiz multiple times: only select Finished
         group_by(`Email address`) |>
-        mutate(has_finished = any(State == "Finished")) |>
-        filter(!(State == "In progress" & has_finished)) |>
+        mutate(has_finished = any(Status == "Finished")) |>
+        filter(!(Status == "In progress" & has_finished)) |>
         select(-has_finished)
 ```
 
@@ -545,7 +545,7 @@ latest_progress_long |>
   styling
 ```
 
-Below, you can see the average progress over time. On July 11th, the ULearning platform got an update. Therefore, from then onwards, the progress for every user was set to 0 again, hence the drop in progress in July 2023.
+Below, you can see the average progress over time. On July 11th 2023, the ULearning platform got an update. Therefore, from then onwards, the progress for every user was set to 0 again, hence the drop in progress in July 2023.
 
 ```{r}
 #| label: progress-over-time
