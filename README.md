@@ -12,6 +12,10 @@ The following aspects are considered in the usage report:
 The report is based on data manually downloaded from the Ulearning environment (a Moodle-based learning environment). 
 As the data upon which this report is based contain personal information (names and email addresses), they are not uploaded to GitHub.
 
- ## More info and contact
- More information about the online module can be found on the Research Data Management Support website: https://uu.nl/privacybasics.
- For questions about enrolment, or other data management-related questions, please [contact RDM Support](https://www.uu.nl/en/research/research-data-management/contact-us).
+## License and citation
+This repository is licensed under the [MIT license](https://github.com/UtrechtUniversity/PBfR_stats/blob/main/LICENSE).
+
+## More info and contact
+- More information about the online module can be found on the Research Data Management Support website: https://uu.nl/privacybasics.
+- Instructions on how to work with this repository can be found in [this repository's wiki](https://github.com/UtrechtUniversity/PBfR_stats/wiki).
+- For questions about enrolment, or other data management-related questions, please [contact RDM Support](https://www.uu.nl/en/research/research-data-management/contact-us).
