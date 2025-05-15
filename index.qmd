@@ -545,7 +545,11 @@ latest_progress_long |>
   styling
 ```
 
-Below, you can see the average progress over time. On July 11th 2023, the ULearning platform got an update. Therefore, from then onwards, the progress for every user was set to 0 again, hence the drop in progress in July 2023.
+Below, you can see the average progress over time.
+
+-   On July 11th 2023, the ULearning platform got an update. Therefore, from then onwards, the progress for every user was set to 0 again, hence the drop in progress in July 2023.
+
+-   In May 2025, we re-did a number of blocks, also updating the Completion settings. This resulted in some of the progress of users to be undone.
 
 ```{r}
 #| label: progress-over-time
