@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+title: Privacy basics for resarchers - usage report
+message: 'If you reuse the code in this repository, please cite us!'
+type: software
+authors:
+  - name: Research Data Management Support
+    affiliation: Utrecht University
+repository-code: 'https://github.com/utrechtUniversity/pbfr_stats'
+url: 'https://utrechtuniversity.github.io/PBfR_stats/'
+abstract: >-
+  This repository contains the Quarto document that
+  generates a usage report for the online module "Privacy
+  Basics for Researchers". This module was developed by
+  Research Data Management Support at Utrecht University as
+  a self-paced e-learning module for researchers to learn
+  about how to handle personal data in their research
+  project. The report uses R to analyse who the participants
+  are, their completion rates and their quiz results in the
+  module.
+keywords:
+  - usage statistics
+  - privacy
+  - general data protection regulation
+  - research data management
+  - monitoring
+license: MIT
+contact:
+  - name: "Research Data Management Support"
+    affiliation: "Utrecht University"
+    email: info.rdm@uu.nl
+references:
+  - authors:
+      - family-names: Huijser
+        given-names: D.C.
+      - family-names: Dielen
+        given-names: R.D.P
+      - family-names: Flores-Dourojeanni
+        given-names: J.P.
+      - family-names: Beltrán
+        given-names: M.
+    year: 2025
+    doi: 10.5281/zenodo.7930571
+    title: "Privacy Basics for Researchers: online module materials"
