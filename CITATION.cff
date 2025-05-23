@@ -27,18 +27,3 @@ keywords:
 license: MIT
 contact:
   - name: "Research Data Management Support"
-references:
-  - authors:
-      - family-names: Huijser
-        given-names: D.C.
-      - family-names: Dielen
-        given-names: R.D.P
-      - family-names: Flores-Dourojeanni
-        given-names: J.P.
-      - family-names: Beltrán
-        given-names: M.
-    year: 2025
-    doi: 10.5281/zenodo.7930571
-    title: "Privacy Basics for Researchers: online module materials"
-    publisher:
-      name: "Utrecht University"
