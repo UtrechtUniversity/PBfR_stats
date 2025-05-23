@@ -4,7 +4,8 @@ message: 'If you reuse the code in this repository, please cite us!'
 type: software
 authors:
   - name: Research Data Management Support
-    affiliation: Utrecht University
+    website: "https://uu.nl/rdm"
+    email: "info.rdm@uu.nl"
 repository-code: 'https://github.com/utrechtUniversity/pbfr_stats'
 url: 'https://utrechtuniversity.github.io/PBfR_stats/'
 abstract: >-
@@ -26,8 +27,6 @@ keywords:
 license: MIT
 contact:
   - name: "Research Data Management Support"
-    affiliation: "Utrecht University"
-    email: info.rdm@uu.nl
 references:
   - authors:
       - family-names: Huijser
@@ -41,3 +40,5 @@ references:
     year: 2025
     doi: 10.5281/zenodo.7930571
     title: "Privacy Basics for Researchers: online module materials"
+    publisher:
+      name: "Utrecht University"
